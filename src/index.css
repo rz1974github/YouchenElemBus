@@ -1,0 +1,179 @@
+:root {
+  font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  color: #213547;
+  background: radial-gradient(circle at 20% 10%, #f2f8ff 0%, #eef4f7 45%, #e4edf3 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+#root {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.app-shell {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid #c9d7e3;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 12px 35px rgba(9, 44, 84, 0.14);
+}
+
+.app-header h1 {
+  margin: 0;
+  color: #17324f;
+  font-size: 28px;
+}
+
+.app-header p {
+  margin: 8px 0 0;
+  color: #3c5974;
+}
+
+.toolbar {
+  margin-top: 14px;
+  display: inline-flex;
+  border: 1px solid #9db6cb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tab {
+  border: 0;
+  background: #eef5fb;
+  color: #2d4d6f;
+  padding: 9px 16px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.tab.active {
+  background: #2e668f;
+  color: #fff;
+}
+
+.status-panel {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 14px;
+  color: #264662;
+}
+
+.status-panel span {
+  background: #edf5fb;
+  border: 1px solid #c4d7e7;
+  border-radius: 999px;
+  padding: 5px 10px;
+}
+
+.loading,
+.error {
+  margin: 10px 0 0;
+  font-size: 14px;
+}
+
+.error {
+  color: #8e2430;
+}
+
+.diagram-wrap {
+  margin-top: 14px;
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #c4d5e3;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f4f9fe 100%);
+}
+
+.route-svg {
+  width: 100%;
+  min-width: 860px;
+  display: block;
+}
+
+.main-line,
+.lane-line {
+  stroke-width: 4;
+}
+
+.main-line {
+  stroke: #4a8ab8;
+}
+
+.lane-line {
+  stroke: #9bb4c8;
+  stroke-dasharray: 5 7;
+}
+
+.station-dot {
+  fill: #fff;
+  stroke: #2f6a95;
+  stroke-width: 4;
+}
+
+.station-label {
+  fill: #204465;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.lane-title {
+  fill: #123652;
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.eta-dot {
+  fill: #fefefe;
+  stroke: #3b7399;
+  stroke-width: 2;
+}
+
+.eta-text {
+  fill: #1a4f74;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.bus-icon {
+  fill: #f6a22a;
+  stroke: #8d5a08;
+  stroke-width: 1.2;
+}
+
+.bus-wheel {
+  fill: #293747;
+}
+
+@media (max-width: 740px) {
+  #root {
+    padding: 10px;
+  }
+
+  .app-shell {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .app-header h1 {
+    font-size: 23px;
+  }
+
+  .status-panel {
+    gap: 8px;
+  }
+}
