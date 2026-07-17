@@ -8,24 +8,26 @@
   --color-dark-card: #060d1c;
 }
 
-:root {
-  font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
-  color: #c8eeff;
-  background: #080c14;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+@layer base {
+  :root {
+    font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-* {
-  box-sizing: border-box;
-}
+  html, body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: #080c14;
+    background-image: radial-gradient(ellipse at 15% 20%, #001a2e 0%, #080c14 60%, #0a0018 100%);
+    color: #c8eeff;
+  }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  background: radial-gradient(ellipse at 15% 20%, #001a2e 0%, #080c14 60%, #0a0018 100%);
+  * {
+    box-sizing: border-box;
+  }
 }
 
 #root {
@@ -121,7 +123,6 @@ body {
 
 .route-svg {
   width: 100%;
-  min-width: 860px;
   display: block;
 }
 
@@ -149,7 +150,7 @@ body {
 }
 
 .station-label {
-  fill: #00f5ff;
+  fill: #ffffff;
   font-size: 20px;
   font-weight: 700;
 }
@@ -173,14 +174,57 @@ body {
   font-weight: 700;
 }
 
-.bus-icon {
-  fill: #f6a22a;
-  stroke: #8d5a08;
-  stroke-width: 1.2;
+.bus-body {
+  fill: #0a1628;
+  stroke: #00f5ff;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 5px #00f5ff66);
+}
+
+.bus-windshield {
+  fill: #00f5ff44;
+  stroke: #00f5ff99;
+  stroke-width: 1;
+}
+
+.bus-destination {
+  fill: #ff00ff66;
+  stroke: #ff00ffaa;
+  stroke-width: 1;
+}
+
+.bus-number-bg {
+  fill: #000000dd;
+  stroke: #ffffff44;
+  stroke-width: 1;
+}
+
+.bus-number {
+  font-size: 20px;
+  font-weight: 700;
+  fill: #ffffff;
+  text-shadow: 0 0 5px #ff00ff, 0 0 10px #00f5ff;
+}
+
+.bus-window {
+  fill: #00f5ff22;
+  stroke: #00f5ff88;
+  stroke-width: 1;
+}
+
+.bus-headlight {
+  fill: #fffaaa;
+  filter: drop-shadow(0 0 3px #ffff00);
 }
 
 .bus-wheel {
-  fill: #293747;
+  fill: #1a1a1a;
+  stroke: #555;
+  stroke-width: 1.5;
+}
+
+.bus-hubcap {
+  fill: #888;
 }
 
 @media (max-width: 740px) {

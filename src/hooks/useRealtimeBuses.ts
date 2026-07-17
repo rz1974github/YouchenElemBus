@@ -7,13 +7,18 @@ import type { BusLane, Direction, EtaSnapshot } from '../types'
 const TOP = 90
 const GAP = 82
 
-function createStationY(count: number): number[] {
-  return Array.from({ length: count }, (_, idx) => TOP + idx * GAP)
+function createStationY(count: number, direction: Direction): number[] {
+  const bottom = TOP + (count - 1) * GAP
+  return Array.from({ length: count }, (_, idx) => {
+    return direction === 'outbound'
+      ? bottom - idx * GAP  // 去程：第一站松山車站在最下(bottom)，最後一站玉成國小在最上(TOP)
+      : TOP + idx * GAP     // 回程：第一站玉成國小在最上(TOP)，最後一站松山車站在最下(bottom)
+  })
 }
 
 export function useRealtimeBuses(direction: Direction) {
   const stationNames = useMemo(() => getOrderedStations(direction), [direction])
-  const stationY = useMemo(() => createStationY(stationNames.length), [stationNames])
+  const stationY = useMemo(() => createStationY(stationNames.length, direction), [stationNames, direction])
 
   const [snapshots, setSnapshots] = useState<EtaSnapshot[]>([])
   const [loading, setLoading] = useState(true)
