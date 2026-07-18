@@ -3,6 +3,7 @@ export type Direction = 'outbound' | 'inbound'
 export interface AppSettings {
   timeThresholdMinutes: number
   pollingIntervalSeconds: number
+  debugMode: boolean
   busNumbers: string[]
   stationNames: string[]
 }

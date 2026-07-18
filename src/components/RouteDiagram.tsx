@@ -67,6 +67,7 @@ export function RouteDiagram({
           }
         })
         const prevIdx = approachIdx - 1
+        const isBetweenStops = minEta > 0 && prevIdx >= 0
 
         // 如果 minEta 為 0，代表公車已抵達 approachIdx，則 approachIdx 之前的路段（sIdx < approachIdx）皆已通過
         // 如果 minEta 大於 0，代表公車還在往 approachIdx 途中的區間（sIdx < approachIdx - 1）皆已通過
@@ -91,6 +92,10 @@ export function RouteDiagram({
                 {Array.from({ length: stationY.length - 1 }).map((_, sIdx) => {
                   // 如果這一段已經被公車完全通過了（sIdx < startSegmentIdx），就不畫虛線
                   if (sIdx < startSegmentIdx) {
+                    return null
+                  }
+                  // 公車在兩站中間時，公車所在的那一段虛線不畫。
+                  if (isBetweenStops && sIdx === prevIdx) {
                     return null
                   }
                   return (

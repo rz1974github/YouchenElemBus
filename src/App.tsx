@@ -6,7 +6,7 @@ import type { Direction } from './types'
 
 function App() {
   const [direction, setDirection] = useState<Direction>('outbound')
-  const [debugMode, setDebugMode] = useState(true)
+  const debugMode = appSettings.debugMode
   const [copied, setCopied] = useState(false)
   const [selectedPlate, setSelectedPlate] = useState<string | null>(null)
 
@@ -99,20 +99,6 @@ function App() {
         </section>
 
         <div className="flex flex-wrap items-center gap-3 mt-[14px]">
-          {/* 工程模式切換 */}
-          <button
-            type="button"
-            onClick={() => setDebugMode(!debugMode)}
-            className={`px-4 py-2 rounded-xl font-bold text-sm tracking-wider cursor-pointer transition-all duration-300 flex items-center gap-2 ${
-              debugMode
-                ? 'bg-[#291705] text-[#ffaa00] border border-[#ffaa00] shadow-[0_0_15px_rgba(255,170,0,0.4)]'
-                : 'bg-[#051329] hover:bg-[#092244] text-[#7ecfdf]/70 border border-[#7ecfdf]/30 hover:text-neon-cyan hover:border-neon-cyan/50'
-            }`}
-          >
-            <span className={`w-2.5 h-2.5 rounded-full ${debugMode ? 'bg-[#ffaa00] animate-pulse' : 'bg-[#7ecfdf]/40'}`} />
-            {debugMode ? '工程模式 ON' : '工程模式 OFF'}
-          </button>
-
           {/* 立即更新按鈕 */}
           <button
             type="button"

@@ -99,9 +99,11 @@ function computeBusY(etas: Array<number | null>, stationY: number[]): number | n
       const firstY = stationY[0]
       const secondY = stationY[1] ?? (firstY - 82)
       const isOutbound = firstY > secondY // 去程首站在下方，值較大
+      const gap = Math.abs(firstY - secondY)
 
-      // 統一放置在距離首站外側 82 像素（一個完整站距）的固定位置
-      return isOutbound ? firstY + 82 : firstY - 82
+      // 去程在首站外等待時，放在「想像前一站」與首站中間（半個站距）。
+      // 回程維持原本一個完整站距，避免改動既有視覺習慣。
+      return isOutbound ? firstY + gap / 2 : firstY - gap
     }
 
     // 狀態 1：在站上（ETA = 0）
