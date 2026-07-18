@@ -10,7 +10,7 @@ function App() {
   const [copied, setCopied] = useState(false)
   const [selectedPlate, setSelectedPlate] = useState<string | null>(null)
 
-  const { stationNames, stationY, lanes, snapshots, loading, refreshing, error, updatedAt, refetch } =
+  const { stationNames, stationY, lanes, snapshots, loading, refreshing, error, updatedAt, paused, togglePause, refetch } =
     useRealtimeBuses(direction)
 
   // 1. 工程模式「不限 1 台車」顯示！直接渲染所有的車道平行線
@@ -136,6 +136,22 @@ function App() {
             </svg>
             {loading || refreshing ? '更新中...' : '立即更新'}
           </button>
+
+          {/* 暫停鍵（僅工程模式顯示） */}
+          {debugMode && (
+            <button
+              type="button"
+              onClick={togglePause}
+              className={`px-4 py-2 rounded-xl font-bold text-sm tracking-wider cursor-pointer transition-all duration-300 border flex items-center gap-2 ${
+                paused
+                  ? 'bg-[#1a1105] text-[#ffaa00] border-[#ffaa00]/70 shadow-[0_0_12px_rgba(255,170,0,0.35)]'
+                  : 'bg-[#051329] hover:bg-[#092244] text-neon-cyan border-neon-cyan/50 hover:shadow-[0_0_15px_rgba(0,245,255,0.35)]'
+              }`}
+            >
+              <span className={`w-2.5 h-2.5 rounded-full ${paused ? 'bg-[#ffaa00]' : 'bg-neon-cyan animate-pulse'}`} />
+              {paused ? '已暫停' : '暫停'}
+            </button>
+          )}
         </div>
       </div>
 

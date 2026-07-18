@@ -80,11 +80,12 @@ function normalizeStopName(stopName: string | undefined): string | null {
 }
 
 function toMinute(value: number | null | undefined): number | null {
-  if (value == null || value < 0) {
+  if (value == null) {
     return null
   }
 
-  return Math.ceil(value / 60)
+  // 正值以 ceil 保守估算到站分鐘；負值以 floor 保留「已過站」訊號
+  return value >= 0 ? Math.ceil(value / 60) : Math.floor(value / 60)
 }
 
 function buildMockSnapshots(): EtaSnapshot[] {
@@ -120,88 +121,8 @@ function buildMockSnapshots(): EtaSnapshot[] {
     orderedStops.forEach((stop, idx) => {
       const delta = (idx - monitorIdx) * minutesPerStop
       const eta = etaToMonitor + delta
-      etaByStop[stop] = eta >= 0 ? eta : null  // 已過站回傳 null
+      etaByStop[stop] = eta
     })
-
-    // 特例：205 去程在西新里和玉成國小中間的虛線上
-    if (busNumber === '205' && direction === 'outbound') {
-      etaByStop['松山車站'] = null
-      etaByStop['玉成里'] = null
-      etaByStop['松山磚廠'] = null
-      etaByStop['南港路三段'] = null
-      etaByStop['西新里'] = -1.0  // 已過站 1.0 分鐘
-      etaByStop['玉成國小'] = 1.0  // 還剩 1.0 分鐘到站，此時公車正好處於兩站正中間
-    }
-
-    // 特例：28 去程剛好在南港路三段上
-    if (busNumber === '28' && direction === 'outbound') {
-      etaByStop['松山車站'] = null
-      etaByStop['玉成里'] = null
-      etaByStop['松山磚廠'] = null
-      etaByStop['南港路三段'] = 0  // 剛好在站上，所以顯示在圓圈上
-      etaByStop['西新里'] = 2
-      etaByStop['玉成國小'] = 5  // 最後一站未過，因此不消失
-    }
-
-    // 特例：306副 去程在玉成里跟松山磚廠中間的虛線上
-    if (busNumber === '306副' && direction === 'outbound') {
-      etaByStop['松山車站'] = null
-      etaByStop['玉成里'] = -1.5   // 已過站 1.5 分鐘
-      etaByStop['松山磚廠'] = 1.5  // 還剩 1.5 分鐘到站，此時公車正好處於兩站正中間
-      etaByStop['南港路三段'] = 4.5
-      etaByStop['西新里'] = 7.5
-      etaByStop['玉成國小'] = 10.5 // 保留到最後一站
-    }
-
-    // 特例：711 回程剛好在玉成國小上
-    if (busNumber === '711' && direction === 'inbound') {
-      etaByStop['玉成國小'] = 0  // 剛好到站，顯示在玉成國小圓圈上
-      etaByStop['西新里'] = 3
-      etaByStop['南港路三段'] = 6
-      etaByStop['松山磚廠'] = 9
-      etaByStop['玉成里'] = 12
-      etaByStop['松山車站'] = 15 // 後續站點正常保留虛線
-    }
-
-    // 特例：203 回程已過玉成國小和西新里，在西新里與南港路三段中間的虛線上
-    if (busNumber === '203' && direction === 'inbound') {
-      etaByStop['玉成國小'] = null
-      etaByStop['西新里'] = -1.0  // 已過 1 分鐘，不顯示圓圈，用來跟下一站拉虛線
-      etaByStop['南港路三段'] = 1.0  // 剩餘 1 分鐘，顯示圓圈
-      etaByStop['松山磚廠'] = 4.0
-      etaByStop['玉成里'] = 7.0
-      etaByStop['松山車站'] = 10.0 // 最後一站未過，確保不消失
-    }
-
-    // 特例：658 回程已過前面大部分站點，剛好在玉成里上
-    if (busNumber === '658' && direction === 'inbound') {
-      etaByStop['玉成國小'] = null
-      etaByStop['西新里'] = null
-      etaByStop['南港路三段'] = null
-      etaByStop['松山磚廠'] = null
-      etaByStop['玉成里'] = 0     // 剛好在站上，顯示在玉成里圓圈上
-      etaByStop['松山車站'] = null // 終點站設為 null
-    }
-
-    // 特例：306 回程還有 5 分到玉成國小 (車牌 306-FL)
-    if (busNumber === '306' && plateNumb === '306-FL' && direction === 'inbound') {
-      etaByStop['玉成國小'] = 5
-      etaByStop['西新里'] = 8
-      etaByStop['南港路三段'] = 11
-      etaByStop['松山磚廠'] = 14
-      etaByStop['玉成里'] = 17
-      etaByStop['松山車站'] = 20
-    }
-
-    // 特例：第二台 306 (車牌 EAL-3066)，已過西新里
-    if (busNumber === '306' && plateNumb === 'EAL-3066' && direction === 'inbound') {
-      etaByStop['玉成國小'] = null
-      etaByStop['西新里'] = -1.0  // 已過，不顯示圓圈，用來與下一站拉虛線
-      etaByStop['南港路三段'] = 2.0  // 即將抵達
-      etaByStop['松山磚廠'] = 5.0
-      etaByStop['玉成里'] = 8.0
-      etaByStop['松山車站'] = 11.0
-    }
 
     return { busNumber, direction, plateNumb, etaByStop }
   })
@@ -250,7 +171,7 @@ export async function fetchEtaSnapshots(signal?: AbortSignal): Promise<EtaSnapsh
     }
 
     const etaMinute = toMinute(row.EstimateTime)
-    if (etaMinute === null || etaMinute < 0) {
+    if (etaMinute === null) {
       continue
     }
 

@@ -25,6 +25,7 @@ export function useRealtimeBuses(direction: Direction) {
   const [snapshots, setSnapshots] = useState<EtaSnapshot[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [paused, setPaused] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
 
@@ -50,15 +51,19 @@ export function useRealtimeBuses(direction: Direction) {
 
   useEffect(() => {
     void pull()
-    const timer = window.setInterval(
-      () => void pull(),
-      appSettings.pollingIntervalSeconds * 1000,
-    )
+
+    if (paused) {
+      return
+    }
+
+    const timer = window.setInterval(() => {
+      void pull()
+    }, appSettings.pollingIntervalSeconds * 1000)
 
     return () => {
       window.clearInterval(timer)
     }
-  }, [])
+  }, [paused])
 
   const lanes: BusLane[] = useMemo(
     () => buildBusLanes(snapshots, direction, stationY),
@@ -67,6 +72,10 @@ export function useRealtimeBuses(direction: Direction) {
 
   const refetch = async () => {
     await pull(true)
+  }
+
+  const togglePause = () => {
+    setPaused((prev) => !prev)
   }
 
   return {
@@ -78,6 +87,8 @@ export function useRealtimeBuses(direction: Direction) {
     refreshing,
     error,
     updatedAt,
+    paused,
+    togglePause,
     refetch,
   }
 }
