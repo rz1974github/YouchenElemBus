@@ -14,6 +14,69 @@ function getOrderedStops(direction: Direction): string[] {
   return [...appSettings.stationNames].reverse()
 }
 
+function getMinNonNegativeEta(etas: Array<number | null>): number | null {
+  let minEta = Number.POSITIVE_INFINITY
+
+  for (const eta of etas) {
+    if (eta != null && eta >= 0 && eta < minEta) {
+      minEta = eta
+    }
+  }
+
+  return Number.isFinite(minEta) ? minEta : null
+}
+
+function splitNoPlateByNullSegments(
+  snapshot: EtaSnapshot,
+  orderedStops: string[],
+): Array<{ plateNumb: string; etas: Array<number | null> }> {
+  const baseEtas = orderedStops.map((stop) => snapshot.etaByStop[stop] ?? null)
+  const isNoPlate = snapshot.plateNumb.startsWith('no-plate-')
+
+  if (!isNoPlate) {
+    return [{ plateNumb: snapshot.plateNumb, etas: baseEtas }]
+  }
+
+  const segments: Array<{ start: number; end: number }> = []
+  let segmentStart = -1
+
+  for (let i = 0; i < baseEtas.length; i++) {
+    const eta = baseEtas[i]
+    if (eta != null) {
+      if (segmentStart === -1) {
+        segmentStart = i
+      }
+      continue
+    }
+
+    if (segmentStart !== -1) {
+      segments.push({ start: segmentStart, end: i - 1 })
+      segmentStart = -1
+    }
+  }
+
+  if (segmentStart !== -1) {
+    segments.push({ start: segmentStart, end: baseEtas.length - 1 })
+  }
+
+  // 只有一段（或沒有有效資料）就維持原樣，不額外拆分。
+  if (segments.length <= 1) {
+    return [{ plateNumb: snapshot.plateNumb, etas: baseEtas }]
+  }
+
+  return segments.map((segment, idx) => {
+    const etas = baseEtas.map(() => null as number | null)
+    for (let i = segment.start; i <= segment.end; i++) {
+      etas[i] = baseEtas[i]
+    }
+
+    return {
+      plateNumb: `${snapshot.plateNumb}-split${idx + 1}`,
+      etas,
+    }
+  })
+}
+
 function computeBusY(etas: Array<number | null>, stationY: number[]): number | null {
   // 找下一個即將到達的站（最小非負 ETA，即 >= 0）
   let minEta = Number.POSITIVE_INFINITY
@@ -30,40 +93,28 @@ function computeBusY(etas: Array<number | null>, stationY: number[]): number | n
 
   const prevIdx = approachIdx - 1
 
-  // 如果最接近且尚未到站的是「玉成里」（index = 1，此時 prevIdx = 0，即松山車站）
-  // 且首站松山車站已經過站為 null。這代表公車此時物理上行駛在：
-  // 松山車站 (已過站 null) ➔ 玉成里 (剩 5 分鐘) 之間的虛線軌道上。
-  // 我們同樣採用「平滑虛擬插值」邏輯（假定兩站間平均行進 3 分鐘），計算出其比例並平滑放置於兩站之間。
-  const prevEta = prevIdx >= 0 ? etas[prevIdx] : null
-  
-  // 當前站已過站但無具體負值 ETA 時（為 null），我們假定站與站之間平均行駛 3 分鐘，
-  // 從而估算已過時間為 Math.max(0, 3 - minEta)，使車子平滑出現在兩站之間，而非粘在前一站圈圈上
-  // 若估算出來的已過時間 + minEta (剩餘時間) 小於等於 0，則 fallback 設為合理的 1 分鐘避免除以 0
-  const elapsed = prevEta != null 
-    ? Math.max(0, -prevEta) 
-    : Math.max(0, 3 - minEta)
-    
-  const total = elapsed + minEta
-  const ratio = total > 0 ? minEta / total : 0
-
   if (prevIdx < 0) {
-    // 若目前最靠近的站是起點首站（index = 0），且其 ETA 大於 0，
-    // 這在物理上代表車子還沒到達首站（正由外側向首站駛近，或正準備發車）
-    // 應遵循使用者規則：只要車子還在起點外側，不限剩餘幾分鐘（如 2 分、6 分），其 Y 軸投影位置應該要完全一樣。
-    // 這能提供完美的物理整齊度，不用考慮誰比較近，統一平穩地定位在首站外側的固定距離上。
+    // 狀態 3：在外圍（首站外側固定位置，不依 ETA 比例）
     if (minEta > 0) {
       const firstY = stationY[0]
       const secondY = stationY[1] ?? (firstY - 82)
       const isOutbound = firstY > secondY // 去程首站在下方，值較大
 
-      // 統一放置在距離首站外側 82 像素（一個完整站距）的整齊固定起跑點位置上
+      // 統一放置在距離首站外側 82 像素（一個完整站距）的固定位置
       return isOutbound ? firstY + 82 : firstY - 82
     }
+
+    // 狀態 1：在站上（ETA = 0）
     return stationY[approachIdx]
   }
 
-  // ratio=0 → 在 approachIdx 站；ratio=1 → 在 prevIdx 站
-  return stationY[approachIdx] + ratio * (stationY[prevIdx] - stationY[approachIdx])
+  // 狀態 1：在站上（ETA = 0）
+  if (minEta === 0) {
+    return stationY[approachIdx]
+  }
+
+  // 狀態 2：在虛線上（固定放在前一站與下一站正中間，不依 ETA 比例）
+  return (stationY[prevIdx] + stationY[approachIdx]) / 2
 }
 
 export function buildBusLanes(
@@ -72,20 +123,32 @@ export function buildBusLanes(
   stationY: number[],
 ): BusLane[] {
   const orderedStops = getOrderedStops(direction)
+  const lanes: BusLane[] = []
 
-  return snapshots
-    .filter((snapshot) => snapshot.direction === direction)
-    .map((snapshot) => {
-      const etas = orderedStops.map((stop) => snapshot.etaByStop[stop] ?? null)
+  for (const snapshot of snapshots) {
+    if (snapshot.direction !== direction) {
+      continue
+    }
 
-      return {
+    const splitParts = splitNoPlateByNullSegments(snapshot, orderedStops)
+    for (const part of splitParts) {
+      lanes.push({
         busNumber: snapshot.busNumber,
-        plateNumb: snapshot.plateNumb,
-        etas,
-        busY: computeBusY(etas, stationY),
-      }
-    })
+        plateNumb: part.plateNumb,
+        etas: part.etas,
+        busY: computeBusY(part.etas, stationY),
+      })
+    }
+  }
+
+  return lanes
     .filter((lane) => {
+      // 全域規則：只要該車目前最小非負 ETA 超過 20 分鐘，直接排除（不分去回程）
+      const minNonNegativeEta = getMinNonNegativeEta(lane.etas)
+      if (minNonNegativeEta == null || minNonNegativeEta > 20) {
+        return false
+      }
+
       // 依據全新規則篩選候選車輛：
       // 1. 去程：車子距監測站「玉成里」在 0 ~ 10 分鐘內；或車子目前處在「松山車站」到「玉成國小」之間的任何位置。
       // 2. 回程：車子距監測站「西新里」在 0 ~ 10 分鐘內；或車子目前處在「松山車站」到「玉成國小」之間的任何位置。
