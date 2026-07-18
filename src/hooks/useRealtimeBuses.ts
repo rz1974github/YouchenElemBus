@@ -4,7 +4,9 @@ import { buildBusLanes, getOrderedStations } from '../lib/busProjection'
 import { fetchEtaSnapshots } from '../lib/tdxClient'
 import type { BusLane, Direction, EtaSnapshot } from '../types'
 
-const TOP = 90
+// 將 TOP 從 90 調整至 110，把整個公車路線、站點圓圈、車道線以及車子主體整體往下平移
+// 同時維持 GAP = 82，這樣底部也會預留更舒適的空間，不會頂到邊界
+const TOP = 110
 const GAP = 82
 
 function createStationY(count: number, direction: Direction): number[] {
@@ -22,36 +24,31 @@ export function useRealtimeBuses(direction: Direction) {
 
   const [snapshots, setSnapshots] = useState<EtaSnapshot[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
 
-  useEffect(() => {
-    let canceled = false
-
-    const pull = async () => {
-      try {
-        const rows = await fetchEtaSnapshots()
-        if (canceled) {
-          return
-        }
-
-        setSnapshots(rows)
-        setUpdatedAt(new Date())
-        setError(null)
-      } catch (err) {
-        if (canceled) {
-          return
-        }
-
-        const message = err instanceof Error ? err.message : '讀取即時資料失敗'
-        setError(message)
-      } finally {
-        if (!canceled) {
-          setLoading(false)
-        }
-      }
+  const pull = async (isManual = false) => {
+    if (isManual) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
     }
+    try {
+      const rows = await fetchEtaSnapshots()
+      setSnapshots(rows)
+      setUpdatedAt(new Date())
+      setError(null)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '讀取即時資料失敗'
+      setError(message)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
 
+  useEffect(() => {
     void pull()
     const timer = window.setInterval(
       () => void pull(),
@@ -59,7 +56,6 @@ export function useRealtimeBuses(direction: Direction) {
     )
 
     return () => {
-      canceled = true
       window.clearInterval(timer)
     }
   }, [])
@@ -69,12 +65,19 @@ export function useRealtimeBuses(direction: Direction) {
     [direction, snapshots, stationY],
   )
 
+  const refetch = async () => {
+    await pull(true)
+  }
+
   return {
     lanes,
+    snapshots,
     stationNames,
     stationY,
     loading,
+    refreshing,
     error,
     updatedAt,
+    refetch,
   }
 }

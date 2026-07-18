@@ -5,10 +5,15 @@ interface RouteDiagramProps {
   stationY: number[]
   lanes: BusLane[]
   direction: Direction
+  selectedPlate: string | null
+  onSelectBus: (plateNumb: string) => void
 }
 
 const SVG_WIDTH = 900
-const SVG_HEIGHT = 600
+// 將 SVG_HEIGHT 從 600 調高至 670，向下擴展 70 像素。
+// 這為整體下移後的首站前對齊車輛（松山車站下方外側 Y 軸大約在 520 ~ 602 附近）
+// 提供無比寬敞的底部安全空間，徹底根除被圓角外框裁切消失的問題。
+const SVG_HEIGHT = 670
 const MAIN_LINE_X = 220
 const RIGHT_START_X = 300
 const RIGHT_GAP = 78
@@ -21,10 +26,14 @@ function formatEta(eta: number | null): string {
   return `${eta}分`
 }
 
-export function RouteDiagram({ stationNames, stationY, lanes, direction }: RouteDiagramProps) {
-  const titleY = direction === 'outbound'
-    ? stationY[0] + 48
-    : 36
+export function RouteDiagram({
+  stationNames,
+  stationY,
+  lanes,
+  direction,
+  selectedPlate,
+  onSelectBus,
+}: RouteDiagramProps) {
   return (
     <svg viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`} className="route-svg" role="img" aria-label="公車動態路線圖">
       <line
@@ -58,29 +67,30 @@ export function RouteDiagram({ stationNames, stationY, lanes, direction }: Route
           }
         })
         const prevIdx = approachIdx - 1
-        const isBusBetween = lane.busY != null && prevIdx >= 0 && approachIdx !== -1
 
-        // 计算车号和公车的显示Y位置
+        // 如果 minEta 為 0，代表公車已抵達 approachIdx，則 approachIdx 之前的路段（sIdx < approachIdx）皆已通過
+        // 如果 minEta 大於 0，代表公車還在往 approachIdx 途中的區間（sIdx < approachIdx - 1）皆已通過
+        const startSegmentIdx = minEta === 0 ? approachIdx : prevIdx
+
+        // 计算车号 and 公车的显示Y位置
         let displayY: number | null = null
         if (lane.busY != null) {
-          // 已进入路线，显示在busY（两站间或圆圈上）
+          // 已進入或準備進入路線，顯示在busY
           displayY = lane.busY
         } else if (firstActiveIdx !== -1) {
-          // 还没进入路线（没有busY），但有站有eta，显示在初始外侧
+          // 还没進入路線，顯示在初始外側
           displayY = direction === 'outbound'
             ? stationY[0] + 48  // 去程：松山車站（下方）
             : stationY[0] - 48  // 回程：玉成國小（上方）
         }
-        // 否则完全过站，displayY = null（不显示）
 
         return (
           <g key={`${lane.busNumber}-${laneIdx}`}>
             {displayY != null && firstActiveIdx !== -1 && (
               <g>
                 {Array.from({ length: stationY.length - 1 }).map((_, sIdx) => {
-                  // 如果這一段剛好是車子正在行駛的區間，就不畫虛線
-                  const isThisSegmentBusBetween = isBusBetween && sIdx === prevIdx
-                  if (sIdx < firstActiveIdx || isThisSegmentBusBetween) {
+                  // 如果這一段已經被公車完全通過了（sIdx < startSegmentIdx），就不畫虛線
+                  if (sIdx < startSegmentIdx) {
                     return null
                   }
                   return (
@@ -107,7 +117,26 @@ export function RouteDiagram({ stationNames, stationY, lanes, direction }: Route
             ))}
 
             {displayY != null ? (
-              <g transform={`translate(${x}, ${displayY + 8})`}>
+              <g
+                transform={`translate(${x}, ${displayY - 2})`}
+                onClick={() => onSelectBus(lane.plateNumb)}
+                style={{ cursor: 'pointer' }}
+                className={selectedPlate === lane.plateNumb ? 'selected-bus-g' : ''}
+              >
+                {/* 選中發光圈 */}
+                {selectedPlate === lane.plateNumb && (
+                  <rect
+                    x={-26}
+                    y={-17}
+                    width={52}
+                    height={28}
+                    rx={6}
+                    fill="none"
+                    stroke="#ffaa00"
+                    strokeWidth={3}
+                    style={{ filter: 'drop-shadow(0 0 8px #ffaa00)' }}
+                  />
+                )}
                 {/* 車身 */}
                 <rect x={-22} y={-13} width={44} height={20} rx={4} className="bus-body" />
                 {/* 目的地牌（車頭上方） */}
