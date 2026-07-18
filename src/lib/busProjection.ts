@@ -101,9 +101,8 @@ function computeBusY(etas: Array<number | null>, stationY: number[]): number | n
       const isOutbound = firstY > secondY // 去程首站在下方，值較大
       const gap = Math.abs(firstY - secondY)
 
-      // 去程在首站外等待時，放在「想像前一站」與首站中間（半個站距）。
-      // 回程維持原本一個完整站距，避免改動既有視覺習慣。
-      return isOutbound ? firstY + gap / 2 : firstY - gap
+      // 首站外等待時，放在「想像前一站」與首站中間（半個站距）。
+      return isOutbound ? firstY + gap / 2 : firstY - gap / 2
     }
 
     // 狀態 1：在站上（ETA = 0）

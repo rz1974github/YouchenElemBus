@@ -122,7 +122,8 @@
 }
 
 .route-svg {
-  width: 100%;
+  width: 150%;
+  max-width: none;
   display: block;
 }
 

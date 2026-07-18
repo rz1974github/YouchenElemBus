@@ -14,8 +14,8 @@ const SVG_WIDTH = 900
 // 這為整體下移後的首站前對齊車輛（松山車站下方外側 Y 軸大約在 520 ~ 602 附近）
 // 提供無比寬敞的底部安全空間，徹底根除被圓角外框裁切消失的問題。
 const SVG_HEIGHT = 670
-const MAIN_LINE_X = 220
-const RIGHT_START_X = 300
+const MAIN_LINE_X = 150
+const RIGHT_START_X = 230
 const RIGHT_GAP = 78
 
 function formatEta(eta: number | null): string {
@@ -123,7 +123,7 @@ export function RouteDiagram({
 
             {displayY != null ? (
               <g
-                transform={`translate(${x}, ${displayY - 2})`}
+                transform={`translate(${x}, ${displayY - 2}) scale(0.75)`}
                 onClick={() => onSelectBus(lane.plateNumb)}
                 style={{ cursor: 'pointer' }}
                 className={selectedPlate === lane.plateNumb ? 'selected-bus-g' : ''}

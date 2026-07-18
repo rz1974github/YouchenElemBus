@@ -4,9 +4,8 @@ import { buildBusLanes, getOrderedStations } from '../lib/busProjection'
 import { fetchEtaSnapshots } from '../lib/tdxClient'
 import type { BusLane, Direction, EtaSnapshot } from '../types'
 
-// 將 TOP 從 90 調整至 110，把整個公車路線、站點圓圈、車道線以及車子主體整體往下平移
-// 同時維持 GAP = 82，這樣底部也會預留更舒適的空間，不會頂到邊界
-const TOP = 110
+// 縮小繪圖區上方留白，將路線整體上移。
+const TOP = 78
 const GAP = 82
 
 function createStationY(count: number, direction: Direction): number[] {
