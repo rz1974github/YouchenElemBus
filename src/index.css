@@ -129,49 +129,49 @@
 
 .main-line,
 .lane-line {
-  stroke-width: 4;
+  stroke-width: 5.2;
 }
 
 .main-line {
   stroke: #00f5ff;
-  filter: drop-shadow(0 0 4px #00f5ff);
+  filter: drop-shadow(0 0 5.2px #00f5ff);
 }
 
 .lane-line {
   stroke: #ff00ff88;
-  stroke-dasharray: 5 7;
-  filter: drop-shadow(0 0 3px #ff00ff);
+  stroke-dasharray: 6.5 9;
+  filter: drop-shadow(0 0 4px #ff00ff);
 }
 
 .station-dot {
   fill: #080c14;
   stroke: #00f5ff;
-  stroke-width: 4;
-  filter: drop-shadow(0 0 6px #00f5ff);
+  stroke-width: 5.2;
+  filter: drop-shadow(0 0 8px #00f5ff);
 }
 
 .station-label {
   fill: #ffffff;
-  font-size: 20px;
+  font-size: 26px;
   font-weight: 700;
 }
 
 .lane-title {
   fill: #ff00ff;
-  font-size: 21px;
+  font-size: 27px;
   font-weight: 700;
 }
 
 .eta-dot {
   fill: #080c14;
   stroke: #39ff14;
-  stroke-width: 2;
-  filter: drop-shadow(0 0 5px #39ff14);
+  stroke-width: 2.6;
+  filter: drop-shadow(0 0 6.5px #39ff14);
 }
 
 .eta-text {
   fill: #39ff14;
-  font-size: 11px;
+  font-size: 14.3px;
   font-weight: 700;
 }
 

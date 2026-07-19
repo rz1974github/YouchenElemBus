@@ -5,8 +5,8 @@ import { fetchEtaSnapshots } from '../lib/tdxClient'
 import type { BusLane, Direction, EtaSnapshot } from '../types'
 
 // 縮小繪圖區上方留白，將路線整體上移。
-const TOP = 78
-const GAP = 82
+const TOP = 101
+const GAP = 107
 
 function createStationY(count: number, direction: Direction): number[] {
   const bottom = TOP + (count - 1) * GAP

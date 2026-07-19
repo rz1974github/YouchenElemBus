@@ -118,7 +118,11 @@ function App() {
     <main className="app-shell">
       <header className="app-header">
         <h1>松山車站到玉成國小公車動態</h1>
-        <p>10 分鐘內快到玉成里的車，會顯示在右側平行線。</p>
+        <p>
+          {direction === 'outbound'
+            ? '10 分鐘內快到玉成里的車，會顯示在右側平行線。'
+            : '10 分鐘內快到西新里的車，會顯示在右側平行線。'}
+        </p>
       </header>
 
       <div className="flex flex-wrap items-center justify-between gap-4">

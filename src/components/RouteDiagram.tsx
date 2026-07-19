@@ -10,13 +10,12 @@ interface RouteDiagramProps {
 }
 
 const SVG_WIDTH = 900
-// 將 SVG_HEIGHT 從 600 調高至 670，向下擴展 70 像素。
-// 這為整體下移後的首站前對齊車輛（松山車站下方外側 Y 軸大約在 520 ~ 602 附近）
+// 將 SVG_HEIGHT 配合內容放大 1.3 倍而調高至 870
 // 提供無比寬敞的底部安全空間，徹底根除被圓角外框裁切消失的問題。
-const SVG_HEIGHT = 670
-const MAIN_LINE_X = 150
-const RIGHT_START_X = 230
-const RIGHT_GAP = 78
+const SVG_HEIGHT = 870
+const MAIN_LINE_X = 160
+const RIGHT_START_X = 260
+const RIGHT_GAP = 101
 
 function formatEta(eta: number | null): string {
   if (eta == null) {
@@ -46,8 +45,8 @@ export function RouteDiagram({
 
       {stationNames.map((name, idx) => (
         <g key={name}>
-          <circle cx={MAIN_LINE_X} cy={stationY[idx]} r={12} className="station-dot" />
-          <text x={MAIN_LINE_X - 20} y={stationY[idx] + 6} className="station-label" textAnchor="end">
+          <circle cx={MAIN_LINE_X} cy={stationY[idx]} r={15.6} className="station-dot" />
+          <text x={MAIN_LINE_X - 26} y={stationY[idx] + 8} className="station-label" textAnchor="end">
             {name}
           </text>
         </g>
@@ -82,8 +81,8 @@ export function RouteDiagram({
         } else if (firstActiveIdx !== -1) {
           // 还没進入路線，顯示在初始外側
           displayY = direction === 'outbound'
-            ? stationY[0] + 48  // 去程：松山車站（下方）
-            : stationY[0] - 48  // 回程：玉成國小（上方）
+            ? stationY[0] + 62  // 去程：松山車站（下方）
+            : stationY[0] - 62  // 回程：玉成國小（上方）
         }
 
         return (
@@ -115,8 +114,8 @@ export function RouteDiagram({
 
             {lane.etas.map((eta, etaIdx) => eta == null || eta < 0 ? null : (
               <g key={`${lane.busNumber}-${etaIdx}`}>
-                <circle cx={x} cy={stationY[etaIdx]} r={15} className="eta-dot" />
-                <text x={x} y={stationY[etaIdx] + 5} className="eta-text" textAnchor="middle">
+                <circle cx={x} cy={stationY[etaIdx]} r={19.5} className="eta-dot" />
+                <text x={x} y={stationY[etaIdx] + 6.5} className="eta-text" textAnchor="middle">
                   {formatEta(eta)}
                 </text>
               </g>
@@ -124,7 +123,7 @@ export function RouteDiagram({
 
             {displayY != null ? (
               <g
-                transform={`translate(${x}, ${displayY - 2}) scale(0.75)`}
+                transform={`translate(${x}, ${displayY - 3}) scale(0.975)`}
                 onClick={() => onSelectBus(lane.plateNumb)}
                 style={{ cursor: 'pointer' }}
                 className={selectedPlate === lane.plateNumb ? 'selected-bus-g' : ''}
@@ -175,7 +174,7 @@ export function RouteDiagram({
           y={stationY[Math.floor(stationY.length / 2)]}
           className="station-label"
           fill="#7ecfdf"
-          fontSize={18}
+          fontSize={23.4}
         >
           目前沒有 10 分鐘內到站的車
         </text>

@@ -179,7 +179,7 @@ export async function fetchEtaSnapshots(signal?: AbortSignal): Promise<EtaSnapsh
     const rawDir: Direction = row.Direction === 1 ? 'inbound' : 'outbound'
     const plate = row.PlateNumb?.trim()
     const isRealPlate = plate && plate !== '' && plate !== 'no-plate'
-    const plateKey = isRealPlate ? plate : 'no-plate'
+    const plateKey = isRealPlate ? plate : `no-plate-${rawDir}`
 
     const stationIdx = appSettings.stationNames.indexOf(normStopName)
     if (stationIdx === -1) {
@@ -200,10 +200,14 @@ export async function fetchEtaSnapshots(signal?: AbortSignal): Promise<EtaSnapsh
   interface Candidate {
     etas: Record<number, number> // index -> eta
     rawDirectionFallback: Direction
+    isVirtualPlate?: boolean
   }
 
   // 根據候選車輛包含的站點 ETA 物理遞增規律進行客觀方向投票，不信任或依賴 TDX 的 Direction
   function getCandidateDirection(c: Candidate): Direction {
+    if (c.isVirtualPlate) {
+      return c.rawDirectionFallback
+    }
     const indices = Object.keys(c.etas).map(Number).sort((a, b) => a - b)
     if (indices.length < 2) {
       return c.rawDirectionFallback
@@ -247,11 +251,14 @@ export async function fetchEtaSnapshots(signal?: AbortSignal): Promise<EtaSnapsh
 
     const tempEtas = { ...c.etas, [newIdx]: newEta }
 
-    // 如果該候選車輛已有 2 個或以上的觀測值，則其行駛方向已固定
-    // 否則，只要其在去程或回程的任何一種物理規律下成立即可
-    const directionsToTest: Direction[] = existingIndices.length >= 2
-      ? [getCandidateDirection(c)]
-      : ['outbound', 'inbound']
+    // 如果是虛擬車牌，則只能使用其原本的方向，不能測試相反方向
+    // 否則，如果該候選車輛已有 2 個或以上的觀測值，其行駛方向已固定
+    // 若不符以上，只要其在去程或回程的任何一種物理規律下成立即可
+    const directionsToTest: Direction[] = c.isVirtualPlate
+      ? [c.rawDirectionFallback]
+      : (existingIndices.length >= 2
+          ? [getCandidateDirection(c)]
+          : ['outbound', 'inbound'])
 
     for (const dir of directionsToTest) {
       const travelIndices = Object.keys(tempEtas).map(Number)
@@ -271,8 +278,17 @@ export async function fetchEtaSnapshots(signal?: AbortSignal): Promise<EtaSnapsh
         const distance = Math.abs(idxB - idxA)
         const gap = etaB - etaA
 
-        // 物理規律限制：平均每站行車時間在 -2 分鐘（Traffic Update / 誤差）到 6 分鐘之間
-        if (gap < -2 * distance || gap > 6 * distance) {
+        // 物理規律限制：
+        // 1. 為了容忍 TDX 預估時間的微小抖動，我們允許單站最多有 -1 分鐘的誤差（即 gap >= -1）
+        // 2. 隨著距離 distance 增加，累積的物理行駛時間應為正。
+        //    我們限制最小 gap：
+        //    distance === 1 時，gap >= -1
+        //    distance === 2 時，gap >= 0
+        //    distance >= 3 時，gap >= 1
+        // 3. 上限仍為平均每站最多 6 分鐘
+        const minGap = distance === 1 ? -1 : (distance === 2 ? 0 : 1)
+
+        if (gap < minGap || gap > 6 * distance) {
           dirValid = false
           break
         }
@@ -308,6 +324,7 @@ export async function fetchEtaSnapshots(signal?: AbortSignal): Promise<EtaSnapsh
           candidates.push({
             etas: { [obs.index]: obs.eta },
             rawDirectionFallback: obs.rawDir,
+            isVirtualPlate: plateKey.startsWith('no-plate'),
           })
         }
       }
@@ -315,7 +332,7 @@ export async function fetchEtaSnapshots(signal?: AbortSignal): Promise<EtaSnapsh
       // 將分割、驗證後的物理車輛加入 Snapshot 列表中
       for (const c of candidates) {
         const dir = getCandidateDirection(c)
-        const plateNumb = plateKey === 'no-plate'
+        const plateNumb = plateKey.startsWith('no-plate')
           ? `no-plate-${dir}-${virtualPlateCounter++}`
           : plateKey
 
