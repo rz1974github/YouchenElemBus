@@ -150,9 +150,9 @@ export function buildBusLanes(
         return false
       }
 
-      // 依據全新規則篩選候選車輛：
-      // 1. 去程：車子距監測站「玉成里」在 0 ~ 10 分鐘內；或車子目前處在「松山車站」到「玉成國小」之間的任何位置。
-      // 2. 回程：車子距監測站「西新里」在 0 ~ 10 分鐘內；或車子目前處在「松山車站」到「玉成國小」之間的任何位置。
+      // 依據篩選規則顯示候選車輛：
+      // 規則 1：距監測站（去程 玉成里 / 回程 西新里）在 0 ~ 10 分鐘內。
+      // 規則 3：車輛正在區間內的某個站上，或正在區間內某兩站之間。
       
       const monitorEta = lane.etas[orderedStops.indexOf(MONITOR_STOP[direction])]
 
@@ -161,17 +161,20 @@ export function buildBusLanes(
         return true
       }
 
-      // 規則 2：車子目前處於「松山車站」到「玉成國小」之間的任何位置。
-      // 由於去程與回程的 orderedStops 順序相反（去程:松山->玉成國小，回程:玉成國小->松山）
-      // 「在松山車站與玉成國小之間」等同於：
-      // 「已出發過起點站（本方向的首站 ETA 為 null 或已過站 < 0），且尚未抵達/通過終點站（本方向的最後一站 ETA >= 0）」
-      const firstStopEta = lane.etas[0]
-      const lastStopEta = lane.etas[lane.etas.length - 1]
+      // 規則 3：車輛正在區間內的某個站上，或正在區間內某兩站之間行駛。
+      // - approachIdx > 0：即將抵達的站不是首站，代表前一站也在區間內，車輛確實在兩站之間。
+      // - approachIdx === 0 且 ruleMinEta === 0：車輛已停在首站上。
+      // （approachIdx === 0 但 ruleMinEta > 0 的情況表示車輛在首站外側趨近，尚未進入區間，不顯示）
+      let ruleMinEta = Number.POSITIVE_INFINITY
+      let approachIdx = -1
+      lane.etas.forEach((eta, idx) => {
+        if (eta != null && eta >= 0 && eta < ruleMinEta) {
+          ruleMinEta = eta
+          approachIdx = idx
+        }
+      })
 
-      const hasPassedFirstStop = firstStopEta == null || firstStopEta < 0
-      const hasNotPassedLastStop = lastStopEta != null && lastStopEta >= 0
-
-      if (hasPassedFirstStop && hasNotPassedLastStop) {
+      if (approachIdx > 0 || ruleMinEta === 0) {
         return true
       }
 

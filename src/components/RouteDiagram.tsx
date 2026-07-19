@@ -35,6 +35,7 @@ export function RouteDiagram({
 }: RouteDiagramProps) {
   return (
     <svg viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`} className="route-svg" role="img" aria-label="公車動態路線圖">
+      <g transform="translate(5, 0)">
       <line
         x1={MAIN_LINE_X}
         y1={stationY[0]}
@@ -179,6 +180,7 @@ export function RouteDiagram({
           目前沒有 10 分鐘內到站的車
         </text>
       ) : null}
+      </g>
     </svg>
   )
 }
