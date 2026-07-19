@@ -228,6 +228,16 @@
   fill: #888;
 }
 
+@keyframes bus-wiggle {
+  0%   { transform: translateX(-2px); }
+  50%  { transform: translateX(2px); }
+  100% { transform: translateX(-2px); }
+}
+
+.bus-wiggle {
+  animation: bus-wiggle 1s steps(1, end) infinite;
+}
+
 @media (max-width: 740px) {
   #root {
     padding: 10px;

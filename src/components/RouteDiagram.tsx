@@ -129,6 +129,7 @@ export function RouteDiagram({
                 style={{ cursor: 'pointer' }}
                 className={selectedPlate === lane.plateNumb ? 'selected-bus-g' : ''}
               >
+                <g className="bus-wiggle">
                 {/* 選中發光圈 */}
                 {selectedPlate === lane.plateNumb && (
                   <rect
@@ -163,6 +164,7 @@ export function RouteDiagram({
                 <text x={0} y={2} className="bus-number" textAnchor="middle" dominantBaseline="middle">
                   {lane.busNumber}
                 </text>
+                </g>
               </g>
             ) : null}
           </g>
