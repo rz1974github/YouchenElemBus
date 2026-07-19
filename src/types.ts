@@ -20,4 +20,5 @@ export interface BusLane {
   plateNumb: string
   etas: Array<number | null>
   busY: number | null
+  laneIndex?: number
 }

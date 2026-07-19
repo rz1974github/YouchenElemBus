@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { appSettings } from '../lib/appSettings'
 import { buildBusLanes, getOrderedStations } from '../lib/busProjection'
 import { fetchEtaSnapshots } from '../lib/tdxClient'
@@ -17,7 +17,7 @@ function createStationY(count: number, direction: Direction): number[] {
   })
 }
 
-export function useRealtimeBuses(direction: Direction) {
+export function useRealtimeBuses(direction: Direction, enabled = true) {
   const stationNames = useMemo(() => getOrderedStations(direction), [direction])
   const stationY = useMemo(() => createStationY(stationNames.length, direction), [stationNames, direction])
 
@@ -49,6 +49,10 @@ export function useRealtimeBuses(direction: Direction) {
   }
 
   useEffect(() => {
+    if (!enabled) {
+      return
+    }
+
     void pull()
 
     if (paused) {
@@ -62,12 +66,50 @@ export function useRealtimeBuses(direction: Direction) {
     return () => {
       window.clearInterval(timer)
     }
-  }, [paused])
+  }, [enabled, paused])
 
-  const lanes: BusLane[] = useMemo(
-    () => buildBusLanes(snapshots, direction, stationY),
-    [direction, snapshots, stationY],
-  )
+  const laneAssignmentRef = useRef<Record<string, number>>({})
+  const lastDirectionRef = useRef<Direction>(direction)
+
+  if (lastDirectionRef.current !== direction) {
+    laneAssignmentRef.current = {}
+    lastDirectionRef.current = direction
+  }
+
+  const lanes: BusLane[] = useMemo(() => {
+    const rawLanes = buildBusLanes(snapshots, direction, stationY)
+    const prevMap = laneAssignmentRef.current
+    const nextMap: Record<string, number> = {}
+    const activePlates = new Set(rawLanes.map((l) => l.plateNumb))
+
+    // 保留目前仍在線上的公車的排數設定
+    for (const plate of Object.keys(prevMap)) {
+      if (activePlates.has(plate)) {
+        nextMap[plate] = prevMap[plate]
+      }
+    }
+
+    // 為新加入的公車分配最小的可用排數（空排）
+    const occupiedLanes = new Set(Object.values(nextMap))
+    for (const lane of rawLanes) {
+      if (nextMap[lane.plateNumb] === undefined) {
+        let index = 0
+        while (occupiedLanes.has(index)) {
+          index++
+        }
+        nextMap[lane.plateNumb] = index
+        occupiedLanes.add(index)
+      }
+    }
+
+    // 更新 reference 以供下次比較
+    laneAssignmentRef.current = nextMap
+
+    return rawLanes.map((lane) => ({
+      ...lane,
+      laneIndex: nextMap[lane.plateNumb] ?? 0,
+    }))
+  }, [direction, snapshots, stationY])
 
   const refetch = async () => {
     await pull(true)

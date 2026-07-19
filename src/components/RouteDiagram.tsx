@@ -53,7 +53,8 @@ export function RouteDiagram({
         </g>
       ))}
 
-      {lanes.map((lane, laneIdx) => {
+      {lanes.map((lane) => {
+        const laneIdx = lane.laneIndex ?? 0
         const x = RIGHT_START_X + laneIdx * RIGHT_GAP
         const firstActiveIdx = lane.etas.findIndex((eta) => eta != null)
         
@@ -86,7 +87,7 @@ export function RouteDiagram({
         }
 
         return (
-          <g key={`${lane.busNumber}-${laneIdx}`}>
+          <g key={lane.plateNumb}>
             {displayY != null && firstActiveIdx !== -1 && (
               <g>
                 {Array.from({ length: stationY.length - 1 }).map((_, sIdx) => {

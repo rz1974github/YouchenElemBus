@@ -1,4 +1,5 @@
 import { appSettings } from './appSettings'
+import { getRuntimeEnv, useMockFromRuntimeEnv } from './runtimeEnv'
 import type { Direction, EtaSnapshot } from '../types'
 
 interface TdxEtaRow {
@@ -27,11 +28,11 @@ let cachedToken: string | null = null
 let tokenExpiresAt = 0
 
 async function fetchAccessToken(): Promise<string> {
-  const clientId = import.meta.env.VITE_TDX_CLIENT_ID as string | undefined
-  const clientSecret = import.meta.env.VITE_TDX_CLIENT_SECRET as string | undefined
+  const clientId = getRuntimeEnv('VITE_TDX_CLIENT_ID')
+  const clientSecret = getRuntimeEnv('VITE_TDX_CLIENT_SECRET')
 
   if (!clientId || !clientSecret) {
-    throw new Error('VITE_TDX_CLIENT_ID / VITE_TDX_CLIENT_SECRET 未設定')
+    throw new Error('VITE_TDX_CLIENT_ID / VITE_TDX_CLIENT_SECRET 未設定，請先點擊「環境設定」')
   }
 
   if (cachedToken && Date.now() < tokenExpiresAt) {
@@ -129,10 +130,10 @@ function buildMockSnapshots(): EtaSnapshot[] {
 }
 
 export async function fetchEtaSnapshots(signal?: AbortSignal): Promise<EtaSnapshot[]> {
-  const useMock = import.meta.env.VITE_USE_MOCK === 'true'
-  const clientId = import.meta.env.VITE_TDX_CLIENT_ID as string | undefined
+  const useMock = useMockFromRuntimeEnv()
 
-  if (useMock || !clientId) {
+  // Mock mode is opt-in only. Default is OFF unless explicitly set to true.
+  if (useMock) {
     return buildMockSnapshots()
   }
 
