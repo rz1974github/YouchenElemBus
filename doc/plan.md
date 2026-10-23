@@ -13,7 +13,8 @@
 
 **不要使用「去程 / 回程 / 順向 / 逆向 / outbound / inbound / direction」描述本 App 的方向。**
 這些詞是 TDX 的用語：TDX 的 `Direction`（0/1）是「每條路線自己」的去返程，13 條路線各自不同，
-和上班 / 下班沒有固定對應。程式只把 TDX `Direction` 當成分組鍵，上班或下班由站序（`StopSequence`）判斷。
+和上班 / 下班沒有固定對應（實測：205 的 0 是下班、306 的 0 是上班）。程式只把 TDX `Direction` 當成分組鍵，
+上班或下班由 TDX `StopOfRoute` API 的站序判斷。
 
 ## 顯示規則（唯一一條）
 **距上車站 `thresholdMinutes` 分鐘內，而且還沒過上車站的車，才顯示。**
@@ -39,5 +40,4 @@
 - `trips.toWork` / `trips.toHome`：顯示名稱與上車站
 
 ## 待辦
-- 用真實 TDX 回應驗證（除錯面板可複製原始資料）：`StopSequence` 是否都有值、站名後綴、無車牌的表示法。
 - PWA manifest / Service Worker。

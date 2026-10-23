@@ -10,7 +10,8 @@ interface RouteDiagramProps {
   onSelectBus: (id: string) => void
 }
 
-const SVG_WIDTH = 900
+// 可視寬度（viewBox 單位）；車道多到放不下時才加寬並出現捲軸
+const VISIBLE_WIDTH = 600
 // 底部預留首站外側的車子位置，避免被外框裁切
 const SVG_HEIGHT = 870
 const MAIN_LINE_X = 160
@@ -33,8 +34,17 @@ export function RouteDiagram({
   selectedId,
   onSelectBus,
 }: RouteDiagramProps) {
+  const laneCount = Math.max(0, ...lanes.map((lane) => lane.laneIndex + 1))
+  const svgWidth = Math.max(VISIBLE_WIDTH, RIGHT_START_X + (laneCount - 1) * RIGHT_GAP + 30)
+
   return (
-    <svg viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`} className="route-svg" role="img" aria-label="公車動態路線圖">
+    <svg
+      viewBox={`0 0 ${svgWidth} ${SVG_HEIGHT}`}
+      style={{ width: `${(svgWidth / VISIBLE_WIDTH) * 100}%` }}
+      className="route-svg"
+      role="img"
+      aria-label="公車動態路線圖"
+    >
       <g transform="translate(5, 0)">
       <line
         x1={MAIN_LINE_X}
@@ -126,7 +136,8 @@ export function RouteDiagram({
           fill="#7ecfdf"
           fontSize={23.4}
         >
-          目前沒有 {appSettings.thresholdMinutes} 分鐘內到{appSettings.trips[trip].boardingStop}的車
+          <tspan x={RIGHT_START_X}>目前沒有 {appSettings.thresholdMinutes} 分鐘內</tspan>
+          <tspan x={RIGHT_START_X} dy="1.4em">到{appSettings.trips[trip].boardingStop}的車</tspan>
         </text>
       ) : null}
       </g>

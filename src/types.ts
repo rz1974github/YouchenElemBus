@@ -19,12 +19,11 @@ export interface AppSettings {
   trips: Record<Trip, TripSettings>
 }
 
-// 一台實體公車。etas 依該趟次的行駛順序排列（與 getTripStops(trip) 同序），
-// 只含這台車即將經過的站，其餘為 null。
+// 一台實體公車（TDX ETA 沒有車牌，由各站 ETA 推得）。
+// etas 依該趟次的行駛順序排列（與 getTripStops(trip) 同序），只含這台車即將經過的站，其餘為 null。
 export interface Vehicle {
   id: string
   busNumber: string
-  plateNumb: string | null
   trip: Trip
   etas: Array<number | null>
 }

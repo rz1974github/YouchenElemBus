@@ -50,7 +50,6 @@ function App() {
     return {
       id: selectedLane.id,
       busNumber: selectedLane.busNumber,
-      plateNumb: selectedLane.plateNumb,
       trip: selectedLane.trip,
       etas: Object.fromEntries(stops.map((stop, idx) => [stop, selectedLane.etas[idx]])),
     }
@@ -135,6 +134,14 @@ function App() {
             className="px-4 py-2 bg-[#130d2f] hover:bg-[#20184a] text-[#d4c8ff] border border-[#a48dff]/50 rounded-xl font-bold text-sm tracking-wider cursor-pointer transition-all duration-300"
           >
             環境設定
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setDebugMode((prev) => !prev)}
+            className="px-4 py-2 bg-[#1a1105] hover:bg-[#291705] text-[#ffaa00] border border-[#ffaa00]/50 rounded-xl font-bold text-sm tracking-wider cursor-pointer transition-all duration-300"
+          >
+            工程模式
           </button>
 
           {/* 立即更新按鈕 */}

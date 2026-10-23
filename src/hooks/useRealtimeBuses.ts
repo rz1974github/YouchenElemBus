@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { appSettings, getTripStops } from '../lib/appSettings'
 import { computeBusY, isWaitingForBoarding } from '../lib/busProjection'
-import { fetchEtaRows, type TdxEtaRow } from '../lib/tdxClient'
-import { rowsToVehicles } from '../lib/vehicles'
+import { fetchEtaRows, fetchStopOfRoute, type TdxEtaRow } from '../lib/tdxClient'
+import { buildTripIndex, rowsToVehicles } from '../lib/vehicles'
 import type { BusLane, Trip, Vehicle } from '../types'
 
 const TOP = 101
@@ -33,9 +33,9 @@ export function useRealtimeBuses(trip: Trip, enabled = true) {
       setLoading(true)
     }
     try {
-      const rows = await fetchEtaRows()
+      const [routes, rows] = await Promise.all([fetchStopOfRoute(), fetchEtaRows()])
       setRawRows(rows)
-      setVehicles(rowsToVehicles(rows))
+      setVehicles(rowsToVehicles(rows, buildTripIndex(routes)))
       setUpdatedAt(new Date())
       setError(null)
     } catch (err) {
