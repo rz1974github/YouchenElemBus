@@ -1,36 +1,23 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { RouteDiagram } from './components/RouteDiagram'
 import { useRealtimeBuses } from './hooks/useRealtimeBuses'
-import { appSettings, getTripStops } from './lib/appSettings'
+import { appSettings } from './lib/appSettings'
 import { getRuntimeCredentialDefaults, hasSavedRuntimeCredentials, saveRuntimeCredentials } from './lib/runtimeEnv'
 import type { Trip } from './types'
 
 function App() {
-  const [envReady, setEnvReady] = useState(false)
-  const [isEnvDialogOpen, setIsEnvDialogOpen] = useState(false)
-  const [clientIdInput, setClientIdInput] = useState('')
-  const [clientSecretInput, setClientSecretInput] = useState('')
+  // 尚未設定 TDX 憑證時，一開啟就跳出環境設定
+  const [envReady] = useState(hasSavedRuntimeCredentials)
+  const [isEnvDialogOpen, setIsEnvDialogOpen] = useState(() => !envReady)
+  const [clientIdInput, setClientIdInput] = useState(() => getRuntimeCredentialDefaults().clientId)
+  const [clientSecretInput, setClientSecretInput] = useState(() => getRuntimeCredentialDefaults().clientSecret)
   const [envError, setEnvError] = useState<string | null>(null)
   const [trip, setTrip] = useState<Trip>('toWork')
   const [debugMode, setDebugMode] = useState(appSettings.debugMode)
   const [copied, setCopied] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  useEffect(() => {
-    const defaults = getRuntimeCredentialDefaults()
-    setClientIdInput(defaults.clientId)
-    setClientSecretInput(defaults.clientSecret)
-
-    if (hasSavedRuntimeCredentials()) {
-      setEnvReady(true)
-      setIsEnvDialogOpen(false)
-    } else {
-      setEnvReady(false)
-      setIsEnvDialogOpen(true)
-    }
-  }, [])
-
-  const { stationNames, stationY, lanes, rawRows, loading, refreshing, error, updatedAt, paused, togglePause, refetch } =
+  const { stationNames, stationY, lanes, rawRows, loading, error, updatedAt, paused, togglePause, refetch } =
     useRealtimeBuses(trip, envReady)
 
   const tripSettings = appSettings.trips[trip]
@@ -46,14 +33,13 @@ function App() {
     if (!debugMode || !selectedLane) {
       return null
     }
-    const stops = getTripStops(trip)
     return {
       id: selectedLane.id,
       busNumber: selectedLane.busNumber,
       trip: selectedLane.trip,
-      etas: Object.fromEntries(stops.map((stop, idx) => [stop, selectedLane.etas[idx]])),
+      etas: Object.fromEntries(stationNames.map((stop, idx) => [stop, selectedLane.etas[idx]])),
     }
-  }, [debugMode, selectedLane, trip])
+  }, [debugMode, selectedLane, stationNames])
 
   const copyJson = async (key: string, data: unknown) => {
     try {
@@ -82,10 +68,8 @@ function App() {
       return
     }
 
+    // 重新載入以清掉舊憑證的 token 快取
     saveRuntimeCredentials(nextClientId, nextClientSecret)
-    setEnvError(null)
-    setEnvReady(true)
-    setIsEnvDialogOpen(false)
     window.location.reload()
   }
 
@@ -96,17 +80,6 @@ function App() {
     }
     setIsEnvDialogOpen(false)
     setEnvError(null)
-  }
-
-  if (!envReady && !isEnvDialogOpen) {
-    return (
-      <main className="app-shell">
-        <header className="app-header">
-          <h1>松山車站 ⇄ 玉成國小</h1>
-        </header>
-        <p className="status-line mt-3">正在初始化環境設定...</p>
-      </main>
-    )
   }
 
   return (
@@ -138,14 +111,14 @@ function App() {
 
           <button
             type="button"
-            disabled={loading || refreshing}
+            disabled={loading}
             onClick={() => void refetch()}
             className="icon-btn"
             aria-label="立即更新"
             title="立即更新"
           >
             <svg
-              className={loading || refreshing ? 'animate-spin' : ''}
+              className={loading ? 'animate-spin' : ''}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"

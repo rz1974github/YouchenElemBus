@@ -19,7 +19,7 @@ TDX ETA 原始資料 (TdxEtaRow[])      tdxClient.ts（或 mockTdx.ts）
 | `src/lib/mockTdx.ts` | 產生「長得像 TDX 原始資料」的假資料，與真實資料走同一條解析路徑 |
 | `src/lib/vehicles.ts` | 用 StopOfRoute 站序建立 (路線, TDX Direction) → 上班/下班 對照；ETA 依此分組再拆成一台台車 |
 | `src/lib/busProjection.ts` | 顯示規則 `isVisible`、車子 Y 位置 `computeBusY` |
-| `src/hooks/useRealtimeBuses.ts` | polling、車道分配 |
+| `src/hooks/useRealtimeBuses.ts` | polling、車道分配（上班、下班各自記住） |
 | `src/components/RouteDiagram.tsx` | SVG 繪圖 |
 | `src/App.tsx` | 主畫面、環境設定、除錯面板 |
 
@@ -32,5 +32,5 @@ TDX ETA 每站只回報「下一台要到這站的車」，**沒有車牌、沒�
 - 除錯面板：按「工程模式」或點任一台車開啟，可複製該車 JSON 與 TDX ETA 原始資料。
 - 要調整行為時，先拿真實原始資料確認問題，再改規則；不要針對單一畫面寫特例。
 
-## 已知事項
-- `npm run lint` 有幾條 React hooks 規則的錯誤（effect 內 setState、render 時讀寫 ref），不影響 build。
+## 檢查
+- `npm run lint` 與 `npm run build` 都應保持零錯誤；CI 只跑 build。

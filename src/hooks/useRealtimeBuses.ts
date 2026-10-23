@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { appSettings, getTripStops } from '../lib/appSettings'
 import { computeBusY, isVisible } from '../lib/busProjection'
 import { fetchEtaRows, fetchStopOfRoute, type TdxEtaRow } from '../lib/tdxClient'
@@ -8,10 +8,35 @@ import type { BusLane, Trip, Vehicle } from '../types'
 const TOP = 101
 const GAP = 107
 
+type LaneMap = Record<string, number>
+
 // 畫面上松山車站固定在最下方、玉成國小固定在最上方
 function createStationY(count: number, trip: Trip): number[] {
   const bottom = TOP + (count - 1) * GAP
   return Array.from({ length: count }, (_, idx) => (trip === 'toWork' ? bottom - idx * GAP : TOP + idx * GAP))
+}
+
+// 已在線上的車保持原本的車道；新車填入最小的空車道
+function assignLanes(prev: LaneMap, vehicles: Vehicle[]): LaneMap {
+  const next: LaneMap = {}
+  for (const v of vehicles) {
+    if (prev[v.id] !== undefined) next[v.id] = prev[v.id]
+  }
+
+  const occupied = new Set(Object.values(next))
+  for (const v of vehicles) {
+    if (next[v.id] !== undefined) continue
+    let index = 0
+    while (occupied.has(index)) index++
+    next[v.id] = index
+    occupied.add(index)
+  }
+  return next
+}
+
+async function fetchVehicles(): Promise<{ rows: TdxEtaRow[]; vehicles: Vehicle[] }> {
+  const [routes, rows] = await Promise.all([fetchStopOfRoute(), fetchEtaRows()])
+  return { rows, vehicles: rowsToVehicles(rows, buildTripIndex(routes)) }
 }
 
 export function useRealtimeBuses(trip: Trip, enabled = true) {
@@ -20,32 +45,31 @@ export function useRealtimeBuses(trip: Trip, enabled = true) {
 
   const [rawRows, setRawRows] = useState<TdxEtaRow[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  // 上班、下班各自記住車道分配
+  const [laneMaps, setLaneMaps] = useState<Record<Trip, LaneMap>>({ toWork: {}, toHome: {} })
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [paused, setPaused] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
 
-  const pull = async (isManual = false) => {
-    if (isManual) {
-      setRefreshing(true)
-    } else {
-      setLoading(true)
-    }
-    try {
-      const [routes, rows] = await Promise.all([fetchStopOfRoute(), fetchEtaRows()])
-      setRawRows(rows)
-      setVehicles(rowsToVehicles(rows, buildTripIndex(routes)))
-      setUpdatedAt(new Date())
-      setError(null)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : '讀取即時資料失敗'
-      setError(message)
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
-    }
-  }
+  const pull = () =>
+    fetchVehicles()
+      .then(({ rows, vehicles: next }) => {
+        setRawRows(rows)
+        setVehicles(next)
+        setLaneMaps((prev) => ({
+          toWork: assignLanes(prev.toWork, next.filter((v) => isVisible(v, 'toWork'))),
+          toHome: assignLanes(prev.toHome, next.filter((v) => isVisible(v, 'toHome'))),
+        }))
+        setUpdatedAt(new Date())
+        setError(null)
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : '讀取即時資料失敗')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
 
   useEffect(() => {
     if (!enabled) {
@@ -67,44 +91,21 @@ export function useRealtimeBuses(trip: Trip, enabled = true) {
     }
   }, [enabled, paused])
 
-  const laneAssignmentRef = useRef<Record<string, number>>({})
-  const lastTripRef = useRef<Trip>(trip)
-
-  if (lastTripRef.current !== trip) {
-    laneAssignmentRef.current = {}
-    lastTripRef.current = trip
-  }
-
-  // 已在線上的車保持原本的車道；新車填入最小的空車道
-  const lanes: BusLane[] = useMemo(() => {
-    const visible = vehicles.filter((v) => isVisible(v, trip))
-    const prevMap = laneAssignmentRef.current
-    const nextMap: Record<string, number> = {}
-
-    for (const v of visible) {
-      if (prevMap[v.id] !== undefined) nextMap[v.id] = prevMap[v.id]
-    }
-
-    const occupied = new Set(Object.values(nextMap))
-    for (const v of visible) {
-      if (nextMap[v.id] !== undefined) continue
-      let index = 0
-      while (occupied.has(index)) index++
-      nextMap[v.id] = index
-      occupied.add(index)
-    }
-
-    laneAssignmentRef.current = nextMap
-
-    return visible.map((v) => ({
-      ...v,
-      busY: computeBusY(v.etas, stationY)!,
-      laneIndex: nextMap[v.id],
-    }))
-  }, [trip, vehicles, stationY])
+  const lanes: BusLane[] = useMemo(
+    () =>
+      vehicles
+        .filter((v) => isVisible(v, trip) && laneMaps[trip][v.id] !== undefined)
+        .map((v) => ({
+          ...v,
+          busY: computeBusY(v.etas, stationY)!,
+          laneIndex: laneMaps[trip][v.id],
+        })),
+    [trip, vehicles, laneMaps, stationY],
+  )
 
   const refetch = async () => {
-    await pull(true)
+    setLoading(true)
+    await pull()
   }
 
   const togglePause = () => {
@@ -117,7 +118,6 @@ export function useRealtimeBuses(trip: Trip, enabled = true) {
     stationNames,
     stationY,
     loading,
-    refreshing,
     error,
     updatedAt,
     paused,

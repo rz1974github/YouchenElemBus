@@ -2,10 +2,6 @@
 
 @theme {
   --color-neon-cyan: #00f5ff;
-  --color-neon-magenta: #ff00ff;
-  --color-neon-green: #39ff14;
-  --color-dark-base: #080c14;
-  --color-dark-card: #060d1c;
 }
 
 @layer base {
@@ -120,15 +116,9 @@
   box-shadow: inset 0 0 12px #00f5ff22;
 }
 
-
-
-.loading,
 .error {
   margin: 10px 0 0;
   font-size: 14px;
-}
-
-.error {
   color: #ff4466;
   text-shadow: 0 0 8px #ff446688;
 }
@@ -184,12 +174,6 @@
   font-weight: 700;
 }
 
-.lane-title {
-  fill: #ff00ff;
-  font-size: 27px;
-  font-weight: 700;
-}
-
 .eta-dot {
   fill: #080c14;
   stroke: #39ff14;
@@ -241,11 +225,6 @@
   stroke-width: 1;
 }
 
-.bus-headlight {
-  fill: #fffaaa;
-  filter: drop-shadow(0 0 3px #ffff00);
-}
-
 .bus-wheel {
   fill: #1a1a1a;
   stroke: #555;
@@ -275,6 +254,4 @@
     padding: 12px;
     border-radius: 14px;
   }
-
-
 }

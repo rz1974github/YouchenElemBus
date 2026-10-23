@@ -18,14 +18,6 @@ const MAIN_LINE_X = 160
 const RIGHT_START_X = 260
 const RIGHT_GAP = 101
 
-function formatEta(eta: number | null): string {
-  if (eta == null) {
-    return '--'
-  }
-
-  return `${eta}分`
-}
-
 export function RouteDiagram({
   stationNames,
   stationY,
@@ -76,7 +68,7 @@ export function RouteDiagram({
               <g key={`${lane.busNumber}-${etaIdx}`}>
                 <circle cx={x} cy={stationY[etaIdx]} r={19.5} className="eta-dot" />
                 <text x={x} y={stationY[etaIdx] + 6.5} className="eta-text" textAnchor="middle">
-                  {formatEta(eta)}
+                  {eta}分
                 </text>
               </g>
             ))}
@@ -85,7 +77,6 @@ export function RouteDiagram({
               transform={`translate(${x}, ${displayY - 3}) scale(0.975)`}
               onClick={() => onSelectBus(lane.id)}
               style={{ cursor: 'pointer' }}
-              className={selectedId === lane.id ? 'selected-bus-g' : ''}
             >
               <g className="bus-wiggle">
                 {/* 選中發光圈 */}

@@ -70,11 +70,10 @@ async function fetchAccessToken(): Promise<string> {
   return cachedToken
 }
 
-async function fetchTdx<T>(resource: string, signal?: AbortSignal): Promise<T> {
+async function fetchTdx<T>(resource: string): Promise<T> {
   const accessToken = await fetchAccessToken()
   const response = await fetch(buildApiUrl(resource, appSettings.busNumbers), {
     headers: { Authorization: `Bearer ${accessToken}` },
-    signal,
   })
 
   if (!response.ok) {
@@ -84,11 +83,11 @@ async function fetchTdx<T>(resource: string, signal?: AbortSignal): Promise<T> {
   return (await response.json()) as T
 }
 
-export async function fetchEtaRows(signal?: AbortSignal): Promise<TdxEtaRow[]> {
+export async function fetchEtaRows(): Promise<TdxEtaRow[]> {
   if (isMockEnabled()) {
     return buildMockEtaRows()
   }
-  return fetchTdx<TdxEtaRow[]>('EstimatedTimeOfArrival', signal)
+  return fetchTdx<TdxEtaRow[]>('EstimatedTimeOfArrival')
 }
 
 // 站序是靜態資料，整個 session 只抓一次
