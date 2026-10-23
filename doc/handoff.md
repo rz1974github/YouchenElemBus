@@ -18,7 +18,7 @@ TDX ETA 原始資料 (TdxEtaRow[])      tdxClient.ts（或 mockTdx.ts）
 | `src/lib/tdxClient.ts` | 取 token、抓 TDX ETA 與 StopOfRoute 原始資料 |
 | `src/lib/mockTdx.ts` | 產生「長得像 TDX 原始資料」的假資料，與真實資料走同一條解析路徑 |
 | `src/lib/vehicles.ts` | 用 StopOfRoute 站序建立 (路線, TDX Direction) → 上班/下班 對照；ETA 依此分組再拆成一台台車 |
-| `src/lib/busProjection.ts` | 顯示規則 `isWaitingForBoarding`、車子 Y 位置 `computeBusY` |
+| `src/lib/busProjection.ts` | 顯示規則 `isVisible`、車子 Y 位置 `computeBusY` |
 | `src/hooks/useRealtimeBuses.ts` | polling、車道分配 |
 | `src/components/RouteDiagram.tsx` | SVG 繪圖 |
 | `src/App.tsx` | 主畫面、環境設定、除錯面板 |

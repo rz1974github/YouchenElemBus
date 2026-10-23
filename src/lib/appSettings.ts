@@ -34,8 +34,3 @@ export function getTripStops(trip: Trip): string[] {
 export function toTripIndex(trip: Trip, stationIdx: number): number {
   return trip === 'toWork' ? stationIdx : appSettings.stationNames.length - 1 - stationIdx
 }
-
-export function getTripTitle(trip: Trip): string {
-  const stops = getTripStops(trip)
-  return `${appSettings.trips[trip].label} ${stops[0]} → ${stops[stops.length - 1]}`
-}

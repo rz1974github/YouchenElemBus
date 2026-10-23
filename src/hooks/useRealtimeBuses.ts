@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { appSettings, getTripStops } from '../lib/appSettings'
-import { computeBusY, isWaitingForBoarding } from '../lib/busProjection'
+import { computeBusY, isVisible } from '../lib/busProjection'
 import { fetchEtaRows, fetchStopOfRoute, type TdxEtaRow } from '../lib/tdxClient'
 import { buildTripIndex, rowsToVehicles } from '../lib/vehicles'
 import type { BusLane, Trip, Vehicle } from '../types'
@@ -77,7 +77,7 @@ export function useRealtimeBuses(trip: Trip, enabled = true) {
 
   // 已在線上的車保持原本的車道；新車填入最小的空車道
   const lanes: BusLane[] = useMemo(() => {
-    const visible = vehicles.filter((v) => isWaitingForBoarding(v, trip))
+    const visible = vehicles.filter((v) => isVisible(v, trip))
     const prevMap = laneAssignmentRef.current
     const nextMap: Record<string, number> = {}
 

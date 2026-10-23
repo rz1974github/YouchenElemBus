@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { RouteDiagram } from './components/RouteDiagram'
 import { useRealtimeBuses } from './hooks/useRealtimeBuses'
-import { appSettings, getTripStops, getTripTitle } from './lib/appSettings'
+import { appSettings, getTripStops } from './lib/appSettings'
 import { getRuntimeCredentialDefaults, hasSavedRuntimeCredentials, saveRuntimeCredentials } from './lib/runtimeEnv'
 import type { Trip } from './types'
 
@@ -102,9 +102,9 @@ function App() {
     return (
       <main className="app-shell">
         <header className="app-header">
-          <h1>松山車站到玉成國小公車動態</h1>
-          <p>正在初始化環境設定...</p>
+          <h1>松山車站 ⇄ 玉成國小</h1>
         </header>
+        <p className="status-line mt-3">正在初始化環境設定...</p>
       </main>
     )
   }
@@ -112,13 +112,54 @@ function App() {
   return (
     <main className="app-shell">
       <header className="app-header">
-        <h1>松山車站到玉成國小公車動態</h1>
-        <p>
-          {appSettings.thresholdMinutes} 分鐘內會到{tripSettings.boardingStop}、而且還沒過站的車，會顯示在右側平行線。
-        </p>
+        <h1>松山車站 ⇄ 玉成國小</h1>
+
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={openEnvSettingsDialog} className="icon-btn" aria-label="環境設定" title="環境設定">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+              <circle cx="9" cy="6" r="2" fill="#0a1a2e" />
+              <circle cx="15" cy="12" r="2" fill="#0a1a2e" />
+              <circle cx="7" cy="18" r="2" fill="#0a1a2e" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setDebugMode((prev) => !prev)}
+            className={debugMode ? 'icon-btn active' : 'icon-btn'}
+            aria-label="工程模式"
+            title="工程模式"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            disabled={loading || refreshing}
+            onClick={() => void refetch()}
+            className="icon-btn"
+            aria-label="立即更新"
+            title="立即更新"
+          >
+            <svg
+              className={loading || refreshing ? 'animate-spin' : ''}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+          </button>
+        </div>
       </header>
 
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-3">
         <section className="toolbar" aria-label="上下班切換">
           {(['toWork', 'toHome'] as const).map((t) => (
             <button key={t} type="button" className={trip === t ? 'tab active' : 'tab'} onClick={() => setTrip(t)}>
@@ -127,75 +168,30 @@ function App() {
           ))}
         </section>
 
-        <div className="flex flex-wrap items-center gap-3 mt-[14px]">
+        <p className="status-line" aria-live="polite">
+          {tripSettings.boardingStop}上車 · {appSettings.thresholdMinutes} 分內
+          <br />
+          更新 {updatedAt ? updatedAt.toLocaleTimeString('zh-TW', { hour12: false }) : '--'}
+        </p>
+
+        {/* 暫停鍵（僅工程模式顯示） */}
+        {debugMode && (
           <button
             type="button"
-            onClick={openEnvSettingsDialog}
-            className="px-4 py-2 bg-[#130d2f] hover:bg-[#20184a] text-[#d4c8ff] border border-[#a48dff]/50 rounded-xl font-bold text-sm tracking-wider cursor-pointer transition-all duration-300"
+            onClick={togglePause}
+            className={`px-3 py-1.5 rounded-xl font-bold text-sm cursor-pointer transition-all duration-300 border flex items-center gap-2 ${
+              paused
+                ? 'bg-[#1a1105] text-[#ffaa00] border-[#ffaa00]/70'
+                : 'bg-[#051329] text-neon-cyan border-neon-cyan/50'
+            }`}
           >
-            環境設定
+            <span className={`w-2.5 h-2.5 rounded-full ${paused ? 'bg-[#ffaa00]' : 'bg-neon-cyan animate-pulse'}`} />
+            {paused ? '已暫停' : '暫停'}
           </button>
-
-          <button
-            type="button"
-            onClick={() => setDebugMode((prev) => !prev)}
-            className="px-4 py-2 bg-[#1a1105] hover:bg-[#291705] text-[#ffaa00] border border-[#ffaa00]/50 rounded-xl font-bold text-sm tracking-wider cursor-pointer transition-all duration-300"
-          >
-            工程模式
-          </button>
-
-          {/* 立即更新按鈕 */}
-          <button
-            type="button"
-            disabled={loading || refreshing}
-            onClick={() => void refetch()}
-            className="px-4 py-2 bg-[#051329] hover:bg-[#092244] disabled:opacity-50 text-neon-cyan border border-neon-cyan/50 rounded-xl font-bold text-sm tracking-wider cursor-pointer transition-all duration-300 hover:shadow-[0_0_15px_rgba(0,245,255,0.4)] hover:border-neon-cyan flex items-center gap-2"
-          >
-            <svg
-              className={`w-4 h-4 text-neon-cyan ${loading || refreshing ? 'animate-spin' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              {/* 順時針循環箭頭圖示 */}
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
-              />
-            </svg>
-            {loading || refreshing ? '更新中...' : '立即更新'}
-          </button>
-
-          {/* 暫停鍵（僅工程模式顯示） */}
-          {debugMode && (
-            <button
-              type="button"
-              onClick={togglePause}
-              className={`px-4 py-2 rounded-xl font-bold text-sm tracking-wider cursor-pointer transition-all duration-300 border flex items-center gap-2 ${
-                paused
-                  ? 'bg-[#1a1105] text-[#ffaa00] border-[#ffaa00]/70 shadow-[0_0_12px_rgba(255,170,0,0.35)]'
-                  : 'bg-[#051329] hover:bg-[#092244] text-neon-cyan border-neon-cyan/50 hover:shadow-[0_0_15px_rgba(0,245,255,0.35)]'
-              }`}
-            >
-              <span className={`w-2.5 h-2.5 rounded-full ${paused ? 'bg-[#ffaa00]' : 'bg-neon-cyan animate-pulse'}`} />
-              {paused ? '已暫停' : '暫停'}
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
-      <section className="status-panel" aria-live="polite">
-        <span>{getTripTitle(trip)}（{tripSettings.boardingStop}上車）</span>
-        <span>更新頻率: 每 {appSettings.pollingIntervalSeconds} 秒</span>
-        <span>
-          最後更新: {updatedAt ? updatedAt.toLocaleTimeString('zh-TW', { hour12: false }) : '--'}
-        </span>
-      </section>
-
       {error ? <p className="error">資料讀取失敗: {error}</p> : null}
-      {loading ? <p className="loading">即時資料載入中...</p> : null}
 
       <section className="diagram-wrap">
         <RouteDiagram
