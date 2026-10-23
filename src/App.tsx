@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { RouteDiagram } from './components/RouteDiagram'
 import { useRealtimeBuses } from './hooks/useRealtimeBuses'
-import { appSettings } from './lib/appSettings'
+import { appSettings, getTripStops, getTripTitle } from './lib/appSettings'
 import { getRuntimeCredentialDefaults, hasSavedRuntimeCredentials, saveRuntimeCredentials } from './lib/runtimeEnv'
-import type { Direction } from './types'
+import type { Trip } from './types'
 
 function App() {
   const [envReady, setEnvReady] = useState(false)
@@ -11,10 +11,10 @@ function App() {
   const [clientIdInput, setClientIdInput] = useState('')
   const [clientSecretInput, setClientSecretInput] = useState('')
   const [envError, setEnvError] = useState<string | null>(null)
-  const [direction, setDirection] = useState<Direction>('outbound')
+  const [trip, setTrip] = useState<Trip>('toWork')
   const [debugMode, setDebugMode] = useState(appSettings.debugMode)
-  const [copied, setCopied] = useState(false)
-  const [selectedPlate, setSelectedPlate] = useState<string | null>(null)
+  const [copied, setCopied] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   useEffect(() => {
     const defaults = getRuntimeCredentialDefaults()
@@ -30,45 +30,41 @@ function App() {
     }
   }, [])
 
-  const { stationNames, stationY, lanes, snapshots, loading, refreshing, error, updatedAt, paused, togglePause, refetch } =
-    useRealtimeBuses(direction, envReady)
+  const { stationNames, stationY, lanes, rawRows, loading, refreshing, error, updatedAt, paused, togglePause, refetch } =
+    useRealtimeBuses(trip, envReady)
 
-  // 1. 工程模式「不限 1 台車」顯示！直接渲染所有的車道平行線
-  const displayedLanes = lanes
+  const tripSettings = appSettings.trips[trip]
 
-  // 2. 如果沒有手動選定車牌，預設選取當前車道中的第一台車（使下方 debug line 始終有初始資料顯示）
-  const activeSelectedPlate = useMemo(() => {
-    if (selectedPlate && lanes.some((l) => l.plateNumb === selectedPlate)) {
-      return selectedPlate
+  // 沒有手動選車時，預設選第一台，讓除錯面板一開就有資料
+  const selectedLane = useMemo(
+    () => lanes.find((l) => l.id === selectedId) ?? lanes[0] ?? null,
+    [lanes, selectedId],
+  )
+
+  // 除錯面板顯示選定車輛，etas 附上站名方便對照
+  const debugVehicle = useMemo(() => {
+    if (!debugMode || !selectedLane) {
+      return null
     }
-    return lanes[0]?.plateNumb ?? null
-  }, [lanes, selectedPlate])
-
-  // 3. 取得選定車牌對應的 JSON Snapshot 資料
-  const debugSnapshotArray = useMemo(() => {
-    if (!debugMode || !activeSelectedPlate) {
-      return []
+    const stops = getTripStops(trip)
+    return {
+      id: selectedLane.id,
+      busNumber: selectedLane.busNumber,
+      plateNumb: selectedLane.plateNumb,
+      trip: selectedLane.trip,
+      etas: Object.fromEntries(stops.map((stop, idx) => [stop, selectedLane.etas[idx]])),
     }
-    const matched = snapshots.find(
-      (s) => s.plateNumb === activeSelectedPlate && s.direction === direction
-    )
-    return matched ? [matched] : []
-  }, [debugMode, direction, activeSelectedPlate, snapshots])
+  }, [debugMode, selectedLane, trip])
 
-  const handleCopyJson = async () => {
+  const copyJson = async (key: string, data: unknown) => {
     try {
-      await navigator.clipboard.writeText(JSON.stringify(debugSnapshotArray, null, 2))
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2))
+      setCopied(key)
+      setTimeout(() => setCopied(null), 2000)
     } catch (err) {
       console.error('Failed to copy text: ', err)
     }
   }
-
-  const title = useMemo(
-    () => (direction === 'outbound' ? '去程 松山車站 -> 玉成國小' : '回程 玉成國小 -> 松山車站'),
-    [direction],
-  )
 
   const openEnvSettingsDialog = () => {
     const defaults = getRuntimeCredentialDefaults()
@@ -119,28 +115,17 @@ function App() {
       <header className="app-header">
         <h1>松山車站到玉成國小公車動態</h1>
         <p>
-          {direction === 'outbound'
-            ? '10 分鐘內快到玉成里的車，會顯示在右側平行線。'
-            : '10 分鐘內快到西新里的車，會顯示在右側平行線。'}
+          {appSettings.thresholdMinutes} 分鐘內會到{tripSettings.boardingStop}、而且還沒過站的車，會顯示在右側平行線。
         </p>
       </header>
 
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <section className="toolbar" aria-label="方向切換">
-          <button
-            type="button"
-            className={direction === 'outbound' ? 'tab active' : 'tab'}
-            onClick={() => setDirection('outbound')}
-          >
-            去程
-          </button>
-          <button
-            type="button"
-            className={direction === 'inbound' ? 'tab active' : 'tab'}
-            onClick={() => setDirection('inbound')}
-          >
-            回程
-          </button>
+        <section className="toolbar" aria-label="上下班切換">
+          {(['toWork', 'toHome'] as const).map((t) => (
+            <button key={t} type="button" className={trip === t ? 'tab active' : 'tab'} onClick={() => setTrip(t)}>
+              {appSettings.trips[t].label}
+            </button>
+          ))}
         </section>
 
         <div className="flex flex-wrap items-center gap-3 mt-[14px]">
@@ -195,7 +180,7 @@ function App() {
       </div>
 
       <section className="status-panel" aria-live="polite">
-        <span>方向: {title}</span>
+        <span>{getTripTitle(trip)}（{tripSettings.boardingStop}上車）</span>
         <span>更新頻率: 每 {appSettings.pollingIntervalSeconds} 秒</span>
         <span>
           最後更新: {updatedAt ? updatedAt.toLocaleTimeString('zh-TW', { hour12: false }) : '--'}
@@ -209,44 +194,51 @@ function App() {
         <RouteDiagram
           stationNames={stationNames}
           stationY={stationY}
-          lanes={displayedLanes}
-          direction={direction}
-          selectedPlate={activeSelectedPlate}
-          onSelectBus={(plate) => {
-            setSelectedPlate(plate)
+          lanes={lanes}
+          trip={trip}
+          selectedId={selectedLane?.id ?? null}
+          onSelectBus={(id) => {
+            setSelectedId(id)
             setDebugMode(true)
           }}
         />
       </section>
 
-      {/* 工程模式的 debug line 區塊 (去程與回程皆全面支援點選顯示) */}
+      {/* 工程模式除錯面板 */}
       {debugMode && (
         <section className="mt-6 p-4 bg-[#030a16] border border-[#ffaa00]/40 rounded-xl shadow-[0_0_15px_rgba(255,170,0,0.1)]">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#ffaa00] animate-ping" />
               <h3 className="text-[#ffaa00] font-bold text-sm tracking-wider">
-                工程除錯數據 ({direction === 'outbound' ? '去程' : '回程'} Debug Line)
+                工程除錯數據（{tripSettings.label}）
               </h3>
-              {debugSnapshotArray.length > 0 && (
+              {debugVehicle && (
                 <span className="text-xs text-[#7ecfdf]/60 font-mono">
-                  ({debugSnapshotArray[0].busNumber} - {debugSnapshotArray[0].plateNumb})
+                  ({debugVehicle.busNumber} - {debugVehicle.id})
                 </span>
               )}
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={handleCopyJson}
+                onClick={() => void copyJson('vehicle', debugVehicle)}
                 className="px-3 py-1 bg-[#1a1105] hover:bg-[#291705] border border-[#ffaa00]/50 hover:border-[#ffaa00] text-[#ffaa00] text-xs font-bold rounded transition-all duration-200 cursor-pointer flex items-center gap-1.5"
               >
-                {copied ? '已複製！' : '複製 JSON 資料'}
+                {copied === 'vehicle' ? '已複製！' : '複製車輛 JSON'}
+              </button>
+              <button
+                type="button"
+                onClick={() => void copyJson('raw', rawRows)}
+                className="px-3 py-1 bg-[#1a1105] hover:bg-[#291705] border border-[#ffaa00]/50 hover:border-[#ffaa00] text-[#ffaa00] text-xs font-bold rounded transition-all duration-200 cursor-pointer flex items-center gap-1.5"
+              >
+                {copied === 'raw' ? '已複製！' : `複製 TDX 原始資料（${rawRows.length} 筆）`}
               </button>
               <button
                 type="button"
                 onClick={() => {
                   setDebugMode(false)
-                  setSelectedPlate(null)
+                  setSelectedId(null)
                 }}
                 className="px-3 py-1 bg-[#260a0a] hover:bg-[#3d1212] border border-[#ff4d4d]/50 hover:border-[#ff4d4d] text-[#ff4d4d] text-xs font-bold rounded transition-all duration-200 cursor-pointer flex items-center"
               >
@@ -255,13 +247,13 @@ function App() {
             </div>
           </div>
           <div className="max-h-60 overflow-y-auto rounded bg-black/60 p-3 border border-white/5">
-            {debugSnapshotArray.length > 0 ? (
+            {debugVehicle ? (
               <pre className="text-xs text-[#00ff66] font-mono leading-relaxed whitespace-pre-wrap break-all">
-                {JSON.stringify(debugSnapshotArray, null, 2)}
+                {JSON.stringify(debugVehicle, null, 2)}
               </pre>
             ) : (
               <p className="text-xs text-[#ffaa00]/70 font-mono">
-                {loading ? '資料載入中...' : `目前${direction === 'outbound' ? '去程' : '回程'}無任何公車資料，請等候或點擊「立即更新」`}
+                {loading ? '資料載入中...' : `目前${tripSettings.label}方向沒有符合條件的車，請等候或點擊「立即更新」`}
               </p>
             )}
           </div>

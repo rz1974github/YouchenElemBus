@@ -57,7 +57,7 @@ export function getRuntimeEnv(key: RuntimeEnvKey): string | undefined {
   return getBuildEnv(key)
 }
 
-export function useMockFromRuntimeEnv(): boolean {
+export function isMockEnabled(): boolean {
   return getRuntimeEnv('VITE_USE_MOCK') === 'true'
 }
 

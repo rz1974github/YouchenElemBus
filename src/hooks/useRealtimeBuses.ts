@@ -1,27 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { appSettings } from '../lib/appSettings'
-import { buildBusLanes, getOrderedStations } from '../lib/busProjection'
-import { fetchEtaSnapshots } from '../lib/tdxClient'
-import type { BusLane, Direction, EtaSnapshot } from '../types'
+import { appSettings, getTripStops } from '../lib/appSettings'
+import { computeBusY, isWaitingForBoarding } from '../lib/busProjection'
+import { fetchEtaRows, type TdxEtaRow } from '../lib/tdxClient'
+import { rowsToVehicles } from '../lib/vehicles'
+import type { BusLane, Trip, Vehicle } from '../types'
 
-// 縮小繪圖區上方留白，將路線整體上移。
 const TOP = 101
 const GAP = 107
 
-function createStationY(count: number, direction: Direction): number[] {
+// 畫面上松山車站固定在最下方、玉成國小固定在最上方
+function createStationY(count: number, trip: Trip): number[] {
   const bottom = TOP + (count - 1) * GAP
-  return Array.from({ length: count }, (_, idx) => {
-    return direction === 'outbound'
-      ? bottom - idx * GAP  // 去程：第一站松山車站在最下(bottom)，最後一站玉成國小在最上(TOP)
-      : TOP + idx * GAP     // 回程：第一站玉成國小在最上(TOP)，最後一站松山車站在最下(bottom)
-  })
+  return Array.from({ length: count }, (_, idx) => (trip === 'toWork' ? bottom - idx * GAP : TOP + idx * GAP))
 }
 
-export function useRealtimeBuses(direction: Direction, enabled = true) {
-  const stationNames = useMemo(() => getOrderedStations(direction), [direction])
-  const stationY = useMemo(() => createStationY(stationNames.length, direction), [stationNames, direction])
+export function useRealtimeBuses(trip: Trip, enabled = true) {
+  const stationNames = useMemo(() => getTripStops(trip), [trip])
+  const stationY = useMemo(() => createStationY(stationNames.length, trip), [stationNames, trip])
 
-  const [snapshots, setSnapshots] = useState<EtaSnapshot[]>([])
+  const [rawRows, setRawRows] = useState<TdxEtaRow[]>([])
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [paused, setPaused] = useState(false)
@@ -35,8 +33,9 @@ export function useRealtimeBuses(direction: Direction, enabled = true) {
       setLoading(true)
     }
     try {
-      const rows = await fetchEtaSnapshots()
-      setSnapshots(rows)
+      const rows = await fetchEtaRows()
+      setRawRows(rows)
+      setVehicles(rowsToVehicles(rows))
       setUpdatedAt(new Date())
       setError(null)
     } catch (err) {
@@ -69,47 +68,40 @@ export function useRealtimeBuses(direction: Direction, enabled = true) {
   }, [enabled, paused])
 
   const laneAssignmentRef = useRef<Record<string, number>>({})
-  const lastDirectionRef = useRef<Direction>(direction)
+  const lastTripRef = useRef<Trip>(trip)
 
-  if (lastDirectionRef.current !== direction) {
+  if (lastTripRef.current !== trip) {
     laneAssignmentRef.current = {}
-    lastDirectionRef.current = direction
+    lastTripRef.current = trip
   }
 
+  // 已在線上的車保持原本的車道；新車填入最小的空車道
   const lanes: BusLane[] = useMemo(() => {
-    const rawLanes = buildBusLanes(snapshots, direction, stationY)
+    const visible = vehicles.filter((v) => isWaitingForBoarding(v, trip))
     const prevMap = laneAssignmentRef.current
     const nextMap: Record<string, number> = {}
-    const activePlates = new Set(rawLanes.map((l) => l.plateNumb))
 
-    // 保留目前仍在線上的公車的排數設定
-    for (const plate of Object.keys(prevMap)) {
-      if (activePlates.has(plate)) {
-        nextMap[plate] = prevMap[plate]
-      }
+    for (const v of visible) {
+      if (prevMap[v.id] !== undefined) nextMap[v.id] = prevMap[v.id]
     }
 
-    // 為新加入的公車分配最小的可用排數（空排）
-    const occupiedLanes = new Set(Object.values(nextMap))
-    for (const lane of rawLanes) {
-      if (nextMap[lane.plateNumb] === undefined) {
-        let index = 0
-        while (occupiedLanes.has(index)) {
-          index++
-        }
-        nextMap[lane.plateNumb] = index
-        occupiedLanes.add(index)
-      }
+    const occupied = new Set(Object.values(nextMap))
+    for (const v of visible) {
+      if (nextMap[v.id] !== undefined) continue
+      let index = 0
+      while (occupied.has(index)) index++
+      nextMap[v.id] = index
+      occupied.add(index)
     }
 
-    // 更新 reference 以供下次比較
     laneAssignmentRef.current = nextMap
 
-    return rawLanes.map((lane) => ({
-      ...lane,
-      laneIndex: nextMap[lane.plateNumb] ?? 0,
+    return visible.map((v) => ({
+      ...v,
+      busY: computeBusY(v.etas, stationY)!,
+      laneIndex: nextMap[v.id],
     }))
-  }, [direction, snapshots, stationY])
+  }, [trip, vehicles, stationY])
 
   const refetch = async () => {
     await pull(true)
@@ -121,7 +113,7 @@ export function useRealtimeBuses(direction: Direction, enabled = true) {
 
   return {
     lanes,
-    snapshots,
+    rawRows,
     stationNames,
     stationY,
     loading,
