@@ -29,6 +29,7 @@ TDX ETA 每站只回報「下一台要到這站的車」，**沒有車牌、沒�
 
 ## 開發
 - Mock：localStorage `yuchen-runtime-env` 內設 `VITE_USE_MOCK: "true"`，或 `.env` 設 `VITE_USE_MOCK=true`。
+- 路線名單：環境設定可編輯，存在 localStorage `yuchen-bus-numbers`，蓋過 appsettings.json 的 `busNumbers`；與預設相同時自動清除。
 - 除錯面板：按「工程模式」或點任一台車開啟，可複製該車 JSON 與 TDX ETA 原始資料。
 - 要調整行為時，先拿真實原始資料確認問題，再改規則；不要針對單一畫面寫特例。
 

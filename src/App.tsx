@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { RouteDiagram } from './components/RouteDiagram'
 import { useRealtimeBuses } from './hooks/useRealtimeBuses'
-import { appSettings } from './lib/appSettings'
+import { appSettings, defaultBusNumbers, parseBusNumbers, saveBusNumbers } from './lib/appSettings'
 import { getRuntimeCredentialDefaults, hasSavedRuntimeCredentials, saveRuntimeCredentials } from './lib/runtimeEnv'
 import type { Trip } from './types'
 
@@ -11,6 +11,7 @@ function App() {
   const [isEnvDialogOpen, setIsEnvDialogOpen] = useState(() => !envReady)
   const [clientIdInput, setClientIdInput] = useState(() => getRuntimeCredentialDefaults().clientId)
   const [clientSecretInput, setClientSecretInput] = useState(() => getRuntimeCredentialDefaults().clientSecret)
+  const [busNumbersInput, setBusNumbersInput] = useState(() => appSettings.busNumbers.join(' '))
   const [envError, setEnvError] = useState<string | null>(null)
   const [trip, setTrip] = useState<Trip>('toWork')
   const [debugMode, setDebugMode] = useState(appSettings.debugMode)
@@ -55,6 +56,7 @@ function App() {
     const defaults = getRuntimeCredentialDefaults()
     setClientIdInput(defaults.clientId)
     setClientSecretInput(defaults.clientSecret)
+    setBusNumbersInput(appSettings.busNumbers.join(' '))
     setEnvError(null)
     setIsEnvDialogOpen(true)
   }
@@ -68,8 +70,15 @@ function App() {
       return
     }
 
-    // 重新載入以清掉舊憑證的 token 快取
+    const nextBusNumbers = parseBusNumbers(busNumbersInput)
+    if (nextBusNumbers.length === 0) {
+      setEnvError('路線名單至少要有一條。')
+      return
+    }
+
+    // 重新載入以清掉舊憑證的 token 快取，並用新名單重抓 StopOfRoute
     saveRuntimeCredentials(nextClientId, nextClientSecret)
+    saveBusNumbers(nextBusNumbers)
     window.location.reload()
   }
 
@@ -247,7 +256,7 @@ function App() {
               className="space-y-4"
             >
               <h2 className="text-xl font-bold tracking-wide text-neon-cyan">環境設定</h2>
-              <p className="text-sm text-[#95d6ea]">請輸入 TDX API 憑證，將儲存在瀏覽器 localStorage。</p>
+              <p className="text-sm text-[#95d6ea]">TDX API 憑證與路線名單會儲存在瀏覽器 localStorage。</p>
 
               <label className="block text-sm font-semibold space-y-1">
                 <span>VITE_TDX_CLIENT_ID</span>
@@ -268,6 +277,27 @@ function App() {
                   className="w-full rounded-lg border border-[#3b6780] bg-[#010915] px-3 py-2 text-sm text-[#d6f6ff] outline-none focus:border-[#6fd2ff]"
                   autoComplete="off"
                 />
+              </label>
+
+              <label className="block text-sm font-semibold space-y-1">
+                <span className="flex items-center justify-between">
+                  路線名單
+                  <button
+                    type="button"
+                    onClick={() => setBusNumbersInput(defaultBusNumbers.join(' '))}
+                    className="text-xs font-normal text-[#9cd5e6] hover:text-[#d6f6ff] cursor-pointer"
+                  >
+                    還原預設
+                  </button>
+                </span>
+                <textarea
+                  value={busNumbersInput}
+                  onChange={(event) => setBusNumbersInput(event.target.value)}
+                  rows={2}
+                  className="w-full rounded-lg border border-[#3b6780] bg-[#010915] px-3 py-2 text-sm text-[#d6f6ff] outline-none focus:border-[#6fd2ff]"
+                  autoComplete="off"
+                />
+                <span className="block text-xs font-normal text-[#95d6ea]">以空白或逗號分隔，名稱需與 TDX 路線名相同（如 306區）</span>
               </label>
 
               {envError ? <p className="text-sm text-[#ff8e8e] font-semibold">{envError}</p> : null}
