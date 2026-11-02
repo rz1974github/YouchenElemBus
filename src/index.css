@@ -123,8 +123,12 @@
   text-shadow: 0 0 8px #ff446688;
 }
 
-.diagram-wrap {
+.diagram-frame {
+  position: relative;
   margin-top: 14px;
+}
+
+.diagram-wrap {
   width: 100%;
   overflow-x: auto;
   /* 保留手指左右滑動，但不顯示捲軸 */
@@ -138,6 +142,35 @@
 
 .diagram-wrap::-webkit-scrollbar {
   display: none;
+}
+
+/* 右側還有車時，右緣淡出，讓外框看起來沒有收尾 */
+.diagram-wrap.has-more {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+}
+
+.more-hint {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  padding: 6px 10px;
+  border: 1px solid #ff00ff88;
+  border-radius: 999px;
+  background: #0a1628e6;
+  color: #ff66ff;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 0 10px #ff00ff55;
+  animation: hint-nudge 1.6s ease-in-out infinite;
+}
+
+@keyframes hint-nudge {
+  0%, 100% { transform: translate(0, -50%); }
+  50% { transform: translate(-4px, -50%); }
 }
 
 .route-svg {

@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { appSettings } from '../lib/appSettings'
 import type { BusLane, Trip } from '../types'
 
@@ -16,7 +17,12 @@ const VISIBLE_WIDTH = 600
 const SVG_HEIGHT = 870
 const MAIN_LINE_X = 160
 const RIGHT_START_X = 260
-const RIGHT_GAP = 101
+// 間距刻意讓右緣那台車只露出一半，提示右邊還能滑動
+const RIGHT_GAP = 110
+// 整張圖往右平移的量（對應下方 <g transform>）
+const OFFSET_X = 5
+// 車身半寬，用來判斷整台車是否在可視範圍內
+const BUS_HALF_WIDTH = 22
 
 export function RouteDiagram({
   stationNames,
@@ -29,7 +35,33 @@ export function RouteDiagram({
   const laneCount = Math.max(0, ...lanes.map((lane) => lane.laneIndex + 1))
   const svgWidth = Math.max(VISIBLE_WIDTH, RIGHT_START_X + (laneCount - 1) * RIGHT_GAP + 30)
 
+  const wrapRef = useRef<HTMLElement>(null)
+  const [hiddenCount, setHiddenCount] = useState(0)
+
+  // 計算右側還有幾台車沒完整顯示
+  const updateHidden = useCallback(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const scale = el.clientWidth / VISIBLE_WIDTH
+    const visibleRight = (el.scrollLeft + el.clientWidth) / scale
+    setHiddenCount(
+      lanes.filter((lane) => OFFSET_X + RIGHT_START_X + lane.laneIndex * RIGHT_GAP + BUS_HALF_WIDTH > visibleRight).length,
+    )
+  }, [lanes])
+
+  useEffect(() => {
+    updateHidden()
+    window.addEventListener('resize', updateHidden)
+    return () => window.removeEventListener('resize', updateHidden)
+  }, [updateHidden])
+
   return (
+    <div className="diagram-frame">
+    <section
+      ref={wrapRef}
+      className={hiddenCount > 0 ? 'diagram-wrap has-more' : 'diagram-wrap'}
+      onScroll={updateHidden}
+    >
     <svg
       viewBox={`0 0 ${svgWidth} ${SVG_HEIGHT}`}
       style={{ width: `${(svgWidth / VISIBLE_WIDTH) * 100}%` }}
@@ -37,7 +69,7 @@ export function RouteDiagram({
       role="img"
       aria-label="公車動態路線圖"
     >
-      <g transform="translate(5, 0)">
+      <g transform={`translate(${OFFSET_X}, 0)`}>
       <line
         x1={MAIN_LINE_X}
         y1={stationY[0]}
@@ -133,5 +165,12 @@ export function RouteDiagram({
       ) : null}
       </g>
     </svg>
+    </section>
+    {hiddenCount > 0 && (
+      <div className="more-hint" aria-hidden="true">
+        +{hiddenCount} 台 ›
+      </div>
+    )}
+    </div>
   )
 }

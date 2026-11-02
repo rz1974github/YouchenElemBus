@@ -175,8 +175,7 @@ function App() {
 
       {error ? <p className="error">資料讀取失敗: {error}</p> : null}
 
-      <section className="diagram-wrap">
-        <RouteDiagram
+      <RouteDiagram
           stationNames={stationNames}
           stationY={stationY}
           lanes={lanes}
@@ -187,7 +186,6 @@ function App() {
             setDebugMode(true)
           }}
         />
-      </section>
 
       {/* 工程模式除錯面板 */}
       {debugMode && (
